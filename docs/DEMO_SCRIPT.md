@@ -1,34 +1,58 @@
-# Demo Script
+# Demo Script: Legacy Modernization Commander
 
-## Working Title
+## One-line Pitch
 
-Slack Incident Commander: from suspicious OAuth alert to coordinated response.
+Legacy Modernization Commander is a Slack-native command center for enterprise legacy modernization teams.
 
-## Three-Minute Story
+It turns a legacy module into a business-readable modernization assessment with risk, business rules, dependencies, SME questions, migration path, and Jira-ready work packages.
 
-### 0:00-0:25 Problem
+## Demo Command
 
-Incident response starts in Slack, but the facts are scattered. A human incident commander has to summarize the alert, gather context, coordinate responders, and write updates under time pressure.
+    /legacy assess claims-batch
 
-### 0:25-1:15 Alert Intake
+## Demo Flow
 
-Show a suspicious Slack OAuth alert. Invoke the agent. The agent extracts the user, app, scopes, IP address, affected channels, and initial risk indicators.
+1. Open Slack.
+2. Go to the demo channel.
+3. Run:
 
-### 1:15-2:05 Tool-Grounded Triage
+       /legacy assess claims-batch
 
-Show the agent querying context tools:
+4. Show the response from Legacy Modernization Commander.
+5. Explain that this is a deterministic vertical slice for a COBOL claims batch module.
 
-- user risk,
-- app install details,
-- audit events,
-- runbook guidance.
+## What the Response Shows
 
-The agent posts a severity, confidence, evidence summary, and immediate containment actions.
+- The system/module being assessed: CLAIMS-BATCH
+- Language and platform: COBOL on z/OS batch
+- Business purpose of the module
+- Modernization risk level
+- Extracted business rules
+- Critical dependencies
+- SME questions before migration
+- Recommended migration path
+- Jira-ready work packages
+- Tool-call/audit summary
 
-### 2:05-2:40 Coordination
+## Key Message for Judges
 
-Show responder task assignments and a running timeline. The agent drafts a stakeholder update in concise executive language.
+Legacy modernization is not only a code-conversion problem.
 
-### 2:40-3:00 Close
+The difficult enterprise problem is coordinating engineers, architects, business SMEs, delivery managers, compliance, and product owners around hidden business logic and risky dependencies.
 
-Show final postmortem draft. Emphasize that Slack becomes the incident command surface and the agent is grounded in tool output.
+This project uses Slack as the operating surface for that modernization workflow.
+
+## MVP Boundary
+
+This MVP intentionally uses deterministic fixtures.
+
+It does not claim production-grade COBOL parsing or live enterprise integrations. The goal is to demonstrate the agentic workflow, Slack-native interaction model, assessment shape, and clean adapter boundary for future Claude/backend integration.
+
+## Future Extensions
+
+- Connect the adapter to a real legacy-code analysis backend
+- Add Claude-powered rule extraction and explanation
+- Create Jira tickets from approved work packages
+- Add SME approval workflows
+- Add dependency graphs and migration-readiness scoring
+- Support additional legacy environments such as Assembler, PL/I, RPG, Smalltalk, and SAP ABAP
