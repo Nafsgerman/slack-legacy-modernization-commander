@@ -1,129 +1,64 @@
-# Brainstorming
+# Brainstorming Notes
 
-## Product Bar
+## Selected Direction
 
-This project should not look like a hackathon toy. It should look like a focused enterprise agent built by a senior engineer who understands incident response, Slack workflows, AI tool use, and production constraints.
+Legacy Modernization Commander.
 
-The target impression:
+A Slack-native command center for enterprise legacy modernization teams.
 
-"This person can take an ambiguous operational problem, design a narrow agentic workflow, build it cleanly, ground it in tools, and present it in a way a real enterprise team would trust."
+## Core Insight
 
-## Core Idea
+Legacy modernization is not only a code-conversion problem.
 
-Slack Incident Commander is an AI-assisted incident coordination agent that lives where response already happens: Slack.
+The hard enterprise problem is coordinating business rules, migration risk, dependencies, SME validation, delivery planning, and stakeholder alignment across many teams.
 
-It turns an alert into a coordinated workflow:
+Slack is a strong surface for this because modernization work already happens through conversations, approvals, questions, and delivery coordination.
 
-- triage,
-- context gathering,
-- containment tasks,
-- timeline,
-- stakeholder update,
-- postmortem.
+## MVP Vertical Slice
 
-## Why Slack
+Command:
 
-Slack is the right hackathon target because:
+    /legacy assess claims-batch
 
-- the app surface is already there,
-- the demo is easy to understand,
-- the challenge is explicitly agent-focused,
-- Slack mobile testing is natural,
-- the product maps to real enterprise workflows,
-- MCP/tool integration can be shown clearly.
+Demo module:
 
-## Project Candidates Considered
+    CLAIMS-BATCH
+    COBOL
+    z/OS batch
+    Insurance claims adjudication
 
-### 1. Generic Company Knowledge Agent
+The MVP returns:
 
-Rejected.
+- Business purpose
+- Modernization risk
+- Extracted business rules
+- Critical dependencies
+- SME questions
+- Recommended migration path
+- Jira-ready work packages
+- Tool-call/audit summary
 
-Too common. Hard to stand out. Risks looking like a wrapper around search/chat.
+## Why This Is Better Than a Generic Chatbot
 
-### 2. HR / IT Helpdesk Agent
+The product is not a COBOL chatbot.
 
-Rejected for MVP.
+It is a workflow layer for modernization teams. The value is not only explaining code; the value is moving a modernization program forward by turning code understanding into reviewable decisions and delivery work.
 
-Beginner-friendly but less differentiated for Nafees's background. Many entries will likely choose this.
+## Hackathon Strategy
 
-### 3. DFIR/SOC Incident Commander
+Build one beautiful vertical slice.
 
-Chosen.
+Do not overbuild.
 
-Best fit for:
+Show strong engineering judgment by keeping a clean adapter boundary, deterministic demo fixtures, focused tests, and honest non-goals.
 
-- 22 years of IT experience,
-- SIFTGuard/DFIR background,
-- enterprise credibility,
-- Slack as an incident command surface,
-- agentic tool use,
-- strong demo narrative.
+## Future Ideas
 
-## MVP Demo Scenario
-
-Suspicious Slack OAuth activity.
-
-Why this scenario works:
-
-- It is native to Slack.
-- It can be shown entirely inside Slack.
-- It is security-relevant without requiring real customer data.
-- It uses structured context tools naturally.
-- It supports mobile-friendly incident updates.
-- It can produce a strong 3-minute demo.
-
-## Demo Story
-
-1. A suspicious OAuth alert appears.
-2. The responder invokes Incident Commander.
-3. The agent queries tools for user risk, app install details, audit events, and runbook guidance.
-4. The agent posts a severity, confidence, key facts, and recommended actions.
-5. The agent maintains a timeline.
-6. The agent drafts a stakeholder update.
-7. The agent generates a postmortem.
-
-## Quality Decisions
-
-### Narrow Scope
-
-One excellent workflow beats five weak workflows.
-
-### Deterministic Tooling
-
-The demo should be repeatable. Synthetic fixtures make the system stable for judging and video recording.
-
-### Tool-Grounded Agent
-
-Every recommendation should be traceable to structured tool output.
-
-### Slack-First UX
-
-Messages must be readable on desktop and mobile. Use concise sections, clear priorities, and short action labels.
-
-### Enterprise Tone
-
-No gimmicks. No cute bot personality. The agent should sound calm, precise, and operationally useful.
-
-## What Makes This Portfolio-Grade
-
-- Clear product judgment.
-- Realistic enterprise workflow.
-- Clean typed implementation.
-- Evidence-grounded incident reasoning.
-- Tests for deterministic behavior.
-- Slack-native UX.
-- MCP-ready architecture.
-- Strong README and architecture diagram.
-- Demo script mapped to hackathon criteria.
-
-## Future Expansion Ideas
-
-Only after the core demo is excellent:
-
-- PagerDuty-style incident import.
-- Splunk/SIEM alert adapter.
-- Real-Time Search API integration if available.
-- Slack Canvas postmortem export.
-- Incident timeline persistence.
-- Multi-incident dashboard.
-- Human approval gates for containment.
+- Add `/legacy rules claims-batch`
+- Add `/legacy tickets claims-batch`
+- Add `/legacy plan claims-batch`
+- Connect to Claude for rule extraction
+- Connect to a legacy-code analysis backend
+- Connect to Jira for ticket creation
+- Add SME approval workflow in Slack
+- Support more legacy technologies such as Assembler, PL/I, RPG, Smalltalk, and SAP ABAP
