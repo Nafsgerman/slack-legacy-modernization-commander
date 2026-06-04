@@ -1,9 +1,9 @@
 {
-  "name": "slack-incident-commander",
+  "name": "slack-legacy-modernization-commander",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Slack-native incident response agent for the Slack Agent Builder Challenge.",
+  "description": "Slack-native legacy modernization command center for enterprise transformation teams.",
   "scripts": {
     "demo": "node src/demo/run-demo.ts",
     "slack:dev": "node src/app/slack-app.ts",
