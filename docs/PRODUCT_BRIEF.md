@@ -1,54 +1,47 @@
-# Product Brief
+# Product Brief: Legacy Modernization Commander
+
+## Product
+
+Legacy Modernization Commander is a Slack-native command center for enterprise legacy modernization teams.
+
+It turns a legacy module into a business-readable modernization assessment with migration risk, extracted business rules, dependencies, SME questions, recommended migration path, and Jira-ready work packages.
 
 ## Problem
 
-Incident response work often starts in Slack, but the facts are scattered across alert payloads, audit logs, identity tools, runbooks, and human messages. The incident commander role becomes a manual coordination bottleneck: summarize the alert, decide severity, ask the same context questions, assign work, post updates, and write the postmortem.
+Legacy modernization is not only a code-conversion problem.
 
-## Solution
+Enterprise modernization programs are slowed down by hidden business rules, unclear dependencies, missing SME validation, fragmented delivery planning, and weak coordination between engineering and business teams.
 
-Slack Incident Commander is a Slack-native AI agent that turns an incident alert into a coordinated response workflow.
+## MVP User
 
-It does not replace responders. It acts as the structured incident coordinator:
+A transformation lead, modernization architect, delivery manager, or enterprise engineer working on a legacy modernization program.
 
-- extracts key facts from an alert,
-- gathers context through tools,
-- proposes severity and confidence,
-- keeps a timeline,
-- recommends next actions,
-- assigns responder tasks,
-- drafts stakeholder updates,
-- produces a postmortem.
+## Demo Command
 
-## Primary User
+    /legacy assess claims-batch
 
-- Security operations lead
-- SRE incident commander
-- IT operations manager
-- DFIR analyst coordinating a response
+## MVP Scenario
 
-## Demo Incident
+The user asks the Slack app to assess a synthetic COBOL module named CLAIMS-BATCH.
 
-Suspicious Slack OAuth activity:
+The app returns:
 
-- A newly installed OAuth app requests broad scopes.
-- The install comes from an unusual IP and geography.
-- The app touches sensitive channels shortly after installation.
-- The user has recent risky login signals.
+- What the module does
+- Why modernization is risky
+- Which business rules were detected
+- Which dependencies matter
+- Which SME questions must be answered
+- Which migration path is recommended
+- Which Jira-ready work packages should move next
 
-The agent should triage the incident and produce a concise, evidence-grounded response plan.
+## Positioning
 
-## Differentiators
+This is not a COBOL chatbot.
 
-- Slack is the command surface, not just a notification sink.
-- Tool results are structured and auditable.
-- The workflow is incident-command focused, not generic chat.
-- Synthetic demo data makes the behavior deterministic and reviewable.
-- The output is useful to both responders and executives.
+It is a workflow orchestration layer for modernization teams. It brings code understanding, business-rule extraction, migration-risk framing, SME review, and delivery planning into Slack.
 
-## Non-Goals For MVP
+## MVP Boundary
 
-- Real SIEM ingestion.
-- Full case management.
-- Production identity provider integration.
-- Marketplace submission before the core demo is excellent.
-- Large-scale Slack message indexing.
+The current implementation uses deterministic local fixtures for reliability and repeatability.
+
+Future integrations can connect the adapter boundary to Claude, a legacy-code analysis backend, Jira, dependency mapping tools, or enterprise knowledge systems.

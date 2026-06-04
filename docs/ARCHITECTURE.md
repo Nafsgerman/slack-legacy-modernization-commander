@@ -1,66 +1,43 @@
 # Architecture
 
-## System Overview
+## Layers
 
-```mermaid
-flowchart LR
-    A["Responder in Slack"] --> B["Slack App / Agent Surface"]
-    B --> C["Incident Orchestrator"]
-    C --> D["Triage Engine"]
-    C --> E["Tool Router"]
-    E --> F["Local MCP Server"]
-    F --> G["Synthetic Audit Data"]
-    F --> H["Identity Context"]
-    F --> I["Runbook Context"]
-    C --> J["Timeline + Task Model"]
-    C --> K["Slack Response Renderer"]
-    K --> B
-```
+    Slack slash command
+        ↓
+    src/app/slack-app.ts
+        ↓
+    src/domain/orchestrator.ts
+        ↓
+    LegacyAnalysisClient adapter boundary
+        ↓
+    deterministic fixtures for MVP
 
-## Components
+## Current Implementation
 
-### Slack App / Agent Surface
+The current MVP is intentionally deterministic.
 
-Receives Slack interactions, slash commands, app mentions, or workflow triggers. It renders incident briefs, task proposals, timeline updates, and summaries back into Slack.
+The command `/legacy assess claims-batch` returns a known modernization assessment for a synthetic COBOL module called CLAIMS-BATCH.
 
-### Incident Orchestrator
+This makes the demo reliable and easy to judge while preserving the architecture needed for future real integrations.
 
-Coordinates the workflow from alert intake to final response. It owns the incident state machine and decides which deterministic tools must be queried before producing an output.
+## Future Integrations
 
-### Triage Engine
+The adapter boundary can later connect to:
 
-Normalizes alerts into a severity, confidence, affected systems, key facts, and missing information. The MVP uses deterministic scoring first, then can layer LLM reasoning on top.
+- Claude or another LLM
+- Legacy-code analysis backend
+- COBOL/Assembler/PL/I parsing tools
+- Jira or Linear
+- Enterprise architecture repositories
+- Dependency mapping systems
+- Knowledge bases and SME approval workflows
 
-### Tool Router
+## Non-Goals
 
-Provides a clean interface between agent logic and context sources. This keeps the agent from directly depending on Slack, MCP, or demo fixtures.
+The MVP does not perform production-grade legacy-code analysis.
 
-### MCP Server
+The MVP does not connect to live customer systems.
 
-Exposes incident-support tools such as:
+The MVP does not create tickets automatically.
 
-- `lookup_user_risk`
-- `search_audit_events`
-- `lookup_app_install`
-- `get_runbook`
-- `create_timeline_entry`
-
-### Response Renderer
-
-Converts incident state into Slack-ready blocks and concise plain text fallbacks.
-
-## Data Principles
-
-- Demo data is synthetic and stored in the repo.
-- Every recommendation should point back to structured facts.
-- Timestamps should be UTC.
-- Tool failures should be visible in the response instead of hidden.
-
-## MVP Runtime Shape
-
-The initial implementation should run locally with:
-
-- a Slack app process,
-- a local MCP/tool process or in-process adapter,
-- synthetic JSON fixtures,
-- unit tests for triage and rendering.
+The goal is to show the agentic workflow and the Slack-native modernization operating surface.
