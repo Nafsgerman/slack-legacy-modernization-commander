@@ -1,9 +1,11 @@
 import "dotenv/config";
 import { fileURLToPath } from "node:url";
 import { App } from "@slack/bolt";
-import { renderIncidentBriefBlocks, renderIncidentBriefText } from "./render.ts";
-import { runIncidentWorkflow } from "../domain/orchestrator.ts";
-import { demoAlert } from "../demo/fixtures.ts";
+import {
+  renderModernizationAssessmentBlocks,
+  renderModernizationAssessmentText
+} from "./render.ts";
+import { runLegacyAssessmentWorkflow } from "../domain/orchestrator.ts";
 
 const requiredEnv = (name: string): string => {
   const value = process.env[name];
@@ -14,12 +16,12 @@ const requiredEnv = (name: string): string => {
 };
 
 const helpText = [
-  "*Slack Incident Commander*",
+  "*Legacy Modernization Commander*",
   "",
-  "Run the demo triage workflow:",
-  "`/incident triage suspicious-oauth`",
+  "Run the demo modernization assessment:",
+  "`/legacy assess claims-batch`",
   "",
-  "Current demo: suspicious Slack OAuth app activity with tool-grounded user, app, audit, and runbook context."
+  "Current demo: COBOL claims batch modernization assessment with business rules, dependencies, SME questions, migration path, Jira-ready work packages, and tool-call audit summary."
 ].join("\n");
 
 const normalizeCommandText = (text: string | undefined): string =>
@@ -33,20 +35,20 @@ export const createSlackApp = (): App => {
     socketMode: true
   });
 
-  app.command("/incident", async ({ command, ack, logger }) => {
+  app.command("/legacy", async ({ command, ack, logger }) => {
     const normalizedText = normalizeCommandText(command.text);
 
-    if (normalizedText === "triage suspicious-oauth" || normalizedText === "demo") {
-      const brief = runIncidentWorkflow(demoAlert);
+    if (normalizedText === "assess claims-batch" || normalizedText === "demo") {
+      const assessment = await runLegacyAssessmentWorkflow("claims-batch");
       await ack({
         response_type: "ephemeral",
-        text: renderIncidentBriefText(brief),
-        blocks: renderIncidentBriefBlocks(brief)
+        text: renderModernizationAssessmentText(assessment),
+        blocks: renderModernizationAssessmentBlocks(assessment)
       });
       return;
     }
 
-    logger.info(`Unhandled /incident command text: "${command.text}"`);
+    logger.info(`Unhandled /legacy command text: "${command.text}"`);
     await ack({
       response_type: "ephemeral",
       text: helpText,
@@ -72,7 +74,7 @@ export const createSlackApp = (): App => {
 export const startSlackApp = async (): Promise<void> => {
   const app = createSlackApp();
   await app.start();
-  console.log("Slack Incident Commander is running in Socket Mode.");
+  console.log("Legacy Modernization Commander is running in Socket Mode.");
 };
 
 const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);

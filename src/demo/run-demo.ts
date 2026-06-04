@@ -1,11 +1,8 @@
-import { renderIncidentBriefText } from "../app/render.ts";
-import { runIncidentWorkflow } from "../domain/orchestrator.ts";
-import { demoAlert } from "./fixtures.ts";
+import {
+  renderModernizationAssessmentText
+} from "../app/render.ts";
+import { runLegacyAssessmentWorkflow } from "../domain/orchestrator.ts";
 
-const brief = runIncidentWorkflow(demoAlert);
+const assessment = await runLegacyAssessmentWorkflow("claims-batch");
 
-console.log(renderIncidentBriefText(brief));
-console.log("\nTool trace:");
-for (const trace of brief.toolTrace) {
-  console.log(`- ${trace.observedAt} ${trace.toolName}: ${trace.resultSummary}`);
-}
+console.log(renderModernizationAssessmentText(assessment));

@@ -1,99 +1,76 @@
-export type Severity = "low" | "medium" | "high" | "critical";
-
+export type RiskLevel = "low" | "medium" | "high" | "critical";
 export type Confidence = "low" | "medium" | "high";
+export type WorkPackagePriority = "p0" | "p1" | "p2";
 
-export type AlertInput = {
+export interface ToolTraceEntry {
+  tool: string;
+  input: string;
+  outputSummary: string;
+}
+
+export interface BusinessRule {
   id: string;
   title: string;
-  source: string;
-  observedAt: string;
-  actorUserId: string;
-  appId: string;
-  ipAddress: string;
-  geo: string;
-  requestedScopes: string[];
-  touchedChannels: string[];
-  rawSignals: string[];
-};
-
-export type UserRisk = {
-  userId: string;
-  displayName: string;
-  department: string;
-  riskLevel: Severity;
-  riskSignals: string[];
-  lastSuccessfulLoginAt: string;
-  lastMfaChallengeAt: string;
-};
-
-export type AppInstall = {
-  appId: string;
-  appName: string;
-  installerUserId: string;
-  installedAt: string;
-  approved: boolean;
-  requestedScopes: string[];
-  vendor: string;
-};
-
-export type AuditEvent = {
-  id: string;
-  occurredAt: string;
-  actorUserId: string;
-  action: string;
-  target: string;
-  ipAddress: string;
-  geo: string;
-  summary: string;
-};
-
-export type Runbook = {
-  id: string;
-  title: string;
-  containmentSteps: string[];
-  evidenceToCollect: string[];
-  escalationPath: string[];
-};
-
-export type ToolTrace = {
-  toolName: string;
-  input: Record<string, unknown>;
-  status: "ok" | "error";
-  observedAt: string;
-  resultSummary: string;
-};
-
-export type ContextBundle = {
-  userRisk: UserRisk | null;
-  appInstall: AppInstall | null;
-  auditEvents: AuditEvent[];
-  runbook: Runbook | null;
-  toolTrace: ToolTrace[];
-};
-
-export type TaskRecommendation = {
-  ownerRole: string;
-  action: string;
-  priority: "p0" | "p1" | "p2";
-  rationale: string;
-};
-
-export type TimelineEntry = {
-  occurredAt: string;
-  event: string;
-  source: string;
-};
-
-export type IncidentBrief = {
-  incidentId: string;
-  title: string;
-  severity: Severity;
+  description: string;
+  sourceEvidence: string;
   confidence: Confidence;
-  status: "triaged" | "contained" | "monitoring";
-  summary: string;
-  keyFacts: string[];
-  recommendedTasks: TaskRecommendation[];
-  timeline: TimelineEntry[];
-  stakeholderUpdate: string;
-  toolTrace: ToolTrace[];
-};
+}
+
+export interface Dependency {
+  name: string;
+  type: "database" | "file" | "scheduler" | "api" | "team" | "platform";
+  modernizationConcern: string;
+}
+
+export interface SmeQuestion {
+  id: string;
+  question: string;
+  ownerRole: string;
+  reason: string;
+}
+
+export interface WorkPackage {
+  key: string;
+  title: string;
+  priority: WorkPackagePriority;
+  ownerRole: string;
+  description: string;
+  acceptanceCriteria: string[];
+}
+
+export interface ModernizationAssessment {
+  assessmentId: string;
+  moduleId: string;
+  moduleName: string;
+  language: string;
+  platform: string;
+  businessPurpose: string;
+  modernizationRisk: {
+    level: RiskLevel;
+    rationale: string;
+    drivers: string[];
+  };
+  extractedBusinessRules: BusinessRule[];
+  dependencies: Dependency[];
+  unknowns: SmeQuestion[];
+  recommendedMigrationPath: string[];
+  jiraReadyWorkPackages: WorkPackage[];
+  toolTrace: ToolTraceEntry[];
+}
+
+export interface BusinessRuleReport {
+  moduleId: string;
+  rules: BusinessRule[];
+}
+
+export interface ModernizationPlan {
+  moduleId: string;
+  migrationPath: string[];
+  workPackages: WorkPackage[];
+}
+
+export interface LegacyAnalysisClient {
+  assessModule(moduleId: string): Promise<ModernizationAssessment>;
+  extractRules(moduleId: string): Promise<BusinessRuleReport>;
+  createModernizationPlan(moduleId: string): Promise<ModernizationPlan>;
+}
