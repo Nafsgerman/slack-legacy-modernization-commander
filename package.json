@@ -1,0 +1,19 @@
+{
+  "name": "slack-incident-commander",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Slack-native incident response agent for the Slack Agent Builder Challenge.",
+  "scripts": {
+    "demo": "node src/demo/run-demo.ts",
+    "slack:dev": "node src/app/slack-app.ts",
+    "test": "node --test tests/*.test.ts"
+  },
+  "dependencies": {
+    "@slack/bolt": "^4.4.0",
+    "dotenv": "^17.2.3"
+  },
+  "engines": {
+    "node": ">=22.6.0"
+  }
+}

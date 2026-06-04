@@ -1,0 +1,27 @@
+display_information:
+  name: Slack Incident Commander
+  description: AI-assisted incident coordination for security and operations teams.
+  background_color: "#1D1C1D"
+features:
+  bot_user:
+    display_name: Incident Commander
+    always_online: false
+  slash_commands:
+    - command: /incident
+      description: Triage an incident alert
+      usage_hint: triage suspicious-oauth
+      should_escape: false
+oauth_config:
+  scopes:
+    bot:
+      - app_mentions:read
+      - channels:read
+      - chat:write
+      - commands
+      - groups:read
+settings:
+  interactivity:
+    is_enabled: true
+  org_deploy_enabled: false
+  socket_mode_enabled: true
+  token_rotation_enabled: false
