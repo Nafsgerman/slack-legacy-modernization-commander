@@ -1,104 +1,140 @@
-# Slack Incident Commander
+# Legacy Modernization Commander
 
-A Slack-native incident response agent for security and operations teams.
+Slack-native command center for enterprise legacy modernization teams.
 
-Slack Incident Commander helps responders triage alerts, gather context through tools, coordinate tasks, maintain a timeline, and draft incident updates from inside Slack.
+Legacy Modernization Commander turns a legacy system module into a business-readable modernization assessment directly inside Slack. It helps transformation teams understand what a legacy module does, which business rules it contains, where migration risk lives, what SMEs need to validate, and which Jira-ready work packages should move next.
 
-This repository is being built for the Slack Agent Builder Challenge as a portfolio-grade agentic operations project.
+This project is built for the Slack Agent Builder Challenge as a focused, portfolio-grade agentic workflow demo.
+
+## Demo Command
+
+    /legacy assess claims-batch
+
+The command returns a structured modernization assessment for a synthetic COBOL claims batch module.
+
+## Why This Exists
+
+Legacy modernization is not only a code-conversion problem.
+
+In real enterprise programs, the hard part is coordination across engineers, architects, business SMEs, compliance, delivery managers, product owners, and downstream system teams. Modernization work gets blocked when business rules are hidden in code, dependencies are unclear, and delivery teams do not have a shared operating surface.
+
+Legacy Modernization Commander uses Slack as that operating surface.
+
+## What the MVP Shows
+
+The current MVP demonstrates one polished vertical slice:
+
+- COBOL module assessment
+- Business-purpose summary
+- Migration-risk analysis
+- Business-rule extraction
+- Dependency mapping
+- SME review questions
+- Recommended migration path
+- Jira-ready modernization work packages
+- Tool-call/audit summary
+- Clean adapter boundary for future Claude or backend integration
+
+The implemented demo module is:
+
+    CLAIMS-BATCH
+    Language: COBOL
+    Platform: z/OS batch
+    Domain: insurance claims adjudication
 
 ## Current Status
 
-Working TypeScript/Node MVP with a local Slack Socket Mode integration.
+Working TypeScript/Node MVP with local Slack Socket Mode integration.
 
-The first implemented workflow is a synthetic security incident involving suspicious Slack OAuth activity. The MVP uses deterministic local fixtures and tools to demonstrate agent workflow design without requiring production security-system access.
+The MVP uses deterministic fixtures rather than live production mainframe or enterprise-system integrations. This keeps the demo reliable, reviewable, and safe while showing the intended agent workflow and Slack-native user experience.
 
-Start with [docs/START_HERE.md](docs/START_HERE.md) and [docs/BRAINSTORMING.md](docs/BRAINSTORMING.md).
+## Architecture Principle
 
-## Core Workflow
+This repository is the Slack workflow-orchestration layer.
 
-1. A responder invokes the agent with an incident alert.
-2. The agent normalizes and triages the alert.
-3. Tool calls gather identity, audit, and event context.
-4. The agent posts an incident brief with severity, confidence, affected assets, and next actions.
-5. The agent tracks responder tasks and timeline events.
-6. The agent drafts stakeholder updates and a postmortem.
+It is intentionally not tightly coupled to a specific COBOL parser, LLM provider, ticketing tool, or modernization backend. The domain layer exposes an adapter boundary so a future implementation can connect to Claude, a legacy-code analysis service, Jira, or a broader modernization platform.
+
+Planned adapter interface:
+
+    export interface LegacyAnalysisClient {
+      assessModule(moduleId: string): Promise<ModernizationAssessment>;
+      extractRules(moduleId: string): Promise<BusinessRuleReport>;
+      createModernizationPlan(moduleId: string): Promise<ModernizationPlan>;
+    }
+
+For the hackathon MVP, the adapter is backed by deterministic local fixtures.
 
 ## Repository Layout
 
-```text
-docs/          Product, architecture, demo, and submission notes
-slack/         Slack app manifest and configuration
-src/app/       Slack app entry points and interaction handlers
-src/domain/    Incident domain model and orchestration logic
-src/tools/     Deterministic local tools used by the MVP
-src/demo/      Synthetic demo scenarios
-tests/         Unit and behavior tests
-```
-
-Planned production extensions include an MCP tool adapter, durable incident storage, and external integrations for Slack Audit Logs, identity providers, SIEM, and ticketing systems.
+    docs/          Product, architecture, demo, and submission notes
+    slack/         Slack app manifest and configuration
+    src/app/       Slack app entry points and Slack rendering
+    src/domain/    Modernization assessment types and orchestration logic
+    src/demo/      Synthetic legacy modernization fixtures
+    src/tools/     Reserved for future external tool adapters
+    tests/         Unit and behavior tests
 
 ## Development
 
-The implementation uses TypeScript and Node.js.
-
 Install dependencies:
 
-```bash
-npm install
-```
+    npm install
 
 Run the deterministic local demo:
 
-```bash
-npm run demo
-```
+    npm run demo
 
 Run tests:
 
-```bash
-npm test
-```
+    npm test
 
 Run the Slack Socket Mode app locally:
 
-```bash
-npm run slack:dev
-```
+    npm run slack:dev
 
 Required local environment variables:
 
-```env
-SLACK_BOT_TOKEN=xoxb-...
-SLACK_SIGNING_SECRET=...
-SLACK_APP_TOKEN=xapp-...
-PORT=3000
-NODE_ENV=development
-```
+    SLACK_BOT_TOKEN=xoxb-...
+    SLACK_SIGNING_SECRET=...
+    SLACK_APP_TOKEN=xapp-...
+    PORT=3000
+    NODE_ENV=development
 
-Do not commit local `.env` files.
+Do not commit local .env files.
 
 ## Local Slack MVP Test
 
 The Slack Socket Mode MVP has been tested locally with the slash command:
 
-```bash
-/incident triage suspicious-oauth
-```
+    /legacy assess claims-batch
 
-The command returns a structured incident brief for a suspicious Slack OAuth app scenario, including severity, incident ID, confidence, tool-call count, summary, and recommended response actions.
+The command returns a Slack-native modernization assessment for CLAIMS-BATCH, including risk, business rules, critical dependencies, SME questions, recommended migration path, Jira-ready work packages, and an audit summary.
 
-This MVP uses deterministic demo fixtures rather than live production security integrations. The architecture is intentionally scoped to demonstrate the incident-command workflow, agent boundaries, and Slack-native response surface without claiming production readiness.
+## Demo Story
 
-## Slack App
+A transformation lead, architect, or delivery manager types:
 
-The initial Slack app manifest draft is in `slack/manifest.yaml`.
+    /legacy assess claims-batch
 
-Slack setup instructions are in [docs/SLACK_SETUP.md](docs/SLACK_SETUP.md).
+The agent responds with a concise command-center view:
 
-## Design Docs
+1. What this legacy module does
+2. Why modernization is risky
+3. Which business rules were detected
+4. Which dependencies must be protected
+5. Which SME questions block safe migration
+6. What the recommended migration path is
+7. Which Jira-ready work packages should be created
 
-- [Agent design](docs/AGENT_DESIGN.md)
-- [Security model](docs/SECURITY_MODEL.md)
+## Non-Goals for the MVP
+
+The MVP does not claim to perform full production-grade COBOL, Assembler, or Smalltalk analysis.
+
+It does not connect to live enterprise systems.
+
+It does not create Jira tickets yet.
+
+Those are future integrations. The current focus is the agentic workflow, Slack-native interaction model, modernization assessment shape, and clean adapter boundary.
 
 ## License
 
