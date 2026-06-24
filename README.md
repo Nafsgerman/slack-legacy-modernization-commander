@@ -32,8 +32,21 @@ The current MVP demonstrates one polished vertical slice:
 - SME review questions
 - Recommended migration path
 - Jira-ready modernization work packages
-- Tool-call/audit summary
+- Real MCP-backed tool-call/audit summary
 - Clean adapter boundary for future Claude or backend integration
+
+## MCP Integration
+
+Legacy Modernization Commander uses MCP server integration for its modernization tool layer.
+
+The local MCP server exposes three tools:
+
+    legacy.assess_module
+    legacy.extract_rules
+    legacy.create_plan
+
+The Slack workflow calls the MCP-backed analysis client, which invokes these tools and assembles the modernization assessment from real MCP tool results. The demo data is deterministic for reliability, but the tool execution path and audit trace are real.
+
 
 The implemented demo module is:
 

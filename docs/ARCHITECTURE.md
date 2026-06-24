@@ -1,31 +1,66 @@
 # Architecture
 
-## Layers
+## Overview
 
-    Slack slash command
+Legacy Modernization Commander is a Slack-native command center for enterprise legacy modernization teams.
+
+The MVP uses Slack Socket Mode, a slash command, and a real MCP server integration to turn a legacy module identifier into a modernization assessment.
+
+## Runtime Flow
+
+    Slack /legacy command
         ↓
     src/app/slack-app.ts
         ↓
     src/domain/orchestrator.ts
         ↓
-    LegacyAnalysisClient adapter boundary
+    src/domain/mcp-legacy-analysis-client.ts
         ↓
-    deterministic fixtures for MVP
+    MCP client over stdio
+        ↓
+    src/mcp/server.ts
+        ↓
+    MCP modernization tools
+        ↓
+    deterministic demo fixtures
+
+## MCP Tools
+
+The MCP server exposes three modernization tools:
+
+    legacy.assess_module
+    legacy.extract_rules
+    legacy.create_plan
+
+These tools are backed by deterministic fixture data for the hackathon demo, but the MCP client/server path is real and tested.
+
+## Why MCP Fits This Product
+
+Legacy modernization workflows depend on many specialized tools: code analyzers, dependency mappers, rule extractors, ticketing systems, enterprise architecture repositories, and SME approval systems.
+
+MCP gives the Slack agent a clean way to call those tools without tightly coupling the Slack app to any single backend or vendor.
 
 ## Current Implementation
 
-The current MVP is intentionally deterministic.
+Implemented:
 
-The command `/legacy assess claims-batch` returns a known modernization assessment for a synthetic COBOL module called CLAIMS-BATCH.
-
-This makes the demo reliable and easy to judge while preserving the architecture needed for future real integrations.
+- Slack Socket Mode app
+- `/legacy assess claims-batch` slash command
+- MCP server with modernization tools
+- MCP-backed `LegacyAnalysisClient`
+- Deterministic CLAIMS-BATCH fixture
+- Slack Block Kit renderer
+- Plain-text renderer
+- Unit tests
+- MCP client integration test
+- GitHub Actions CI
 
 ## Future Integrations
 
 The adapter boundary can later connect to:
 
 - Claude or another LLM
-- Legacy-code analysis backend
+- Real legacy-code analysis backend
 - COBOL/Assembler/PL/I parsing tools
 - Jira or Linear
 - Enterprise architecture repositories
@@ -40,4 +75,4 @@ The MVP does not connect to live customer systems.
 
 The MVP does not create tickets automatically.
 
-The goal is to show the agentic workflow and the Slack-native modernization operating surface.
+The goal is to show the agentic workflow, the Slack-native modernization operating surface, and the MCP-backed tool boundary.

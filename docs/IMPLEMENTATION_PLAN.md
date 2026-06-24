@@ -1,43 +1,54 @@
 # Implementation Plan
 
-## Milestone 1: Project Spine
+## Current Status
 
-- [x] Create project context.
-- [x] Create product brief.
-- [x] Create initial architecture.
-- [x] Add TypeScript project scaffold.
-- [x] Add synthetic incident fixture.
-- [x] Add deterministic triage engine.
+The MVP is implemented and running as a Slack Socket Mode app.
 
-## Milestone 2: Local Agent Workflow
+The command is:
 
-- [x] Parse a demo alert into an incident model.
-- [x] Query local context tools.
-- [x] Produce an incident brief.
-- [x] Produce task recommendations.
-- [x] Produce an executive update.
-- [x] Add unit tests for the above.
+    /legacy assess claims-batch
 
-## Milestone 3: Slack Integration
+The workflow now uses a real MCP server integration for its modernization tool layer.
 
-- [x] Create Slack app manifest.
-- [x] Implement Slack command or app mention handler.
-- [ ] Render incident brief using Slack Block Kit.
-- [ ] Add local development instructions.
-- [ ] Test in Slack developer sandbox.
+## Completed
 
-## Milestone 4: MCP Integration
+- [x] Create Slack app scaffold
+- [x] Implement `/legacy assess claims-batch`
+- [x] Build modernization domain model
+- [x] Add deterministic CLAIMS-BATCH demo fixture
+- [x] Render concise Slack Block Kit assessment
+- [x] Add plain-text demo output
+- [x] Add tests
+- [x] Add GitHub Actions CI
+- [x] Rename and clean incident-era docs
+- [x] Add MCP server integration
+- [x] Add MCP-backed legacy analysis client
+- [x] Replace fake fixture trace with real MCP tool trace
+- [x] Test MCP client path in CI
 
-- [ ] Expose local tools through MCP.
-- [ ] Wire agent workflow through MCP adapter.
-- [ ] Log tool calls and results.
-- [ ] Add architecture diagram update.
+## MCP Tools Implemented
 
-## Milestone 5: Submission Polish
+    legacy.assess_module
+    legacy.extract_rules
+    legacy.create_plan
 
-- [ ] Final README.
-- [ ] Open source license.
-- [ ] Demo script.
-- [ ] 3-minute video.
-- [ ] Devpost text.
-- [ ] Sandbox access checklist.
+## Next Engineering Milestones
+
+1. Add architecture diagram.
+2. Add README screenshot.
+3. Improve Slack UX with a more compact executive summary.
+4. Add optional `/legacy rules claims-batch`.
+5. Add optional `/legacy tickets claims-batch`.
+6. Add optional Claude reasoning over MCP tool results.
+7. Add Devpost submission materials.
+
+## Quality Bar
+
+This repo should remain portfolio-grade:
+
+- Real implemented boundaries, not fake claims
+- Deterministic and reliable demo
+- Tests for critical behavior
+- CI green
+- Honest non-goals
+- Clean documentation
