@@ -159,7 +159,7 @@ export const renderModernizationAssessmentBlocks = (
       elements: [
         {
           type: "mrkdwn",
-          text: `${assessment.toolTrace.length} audited fixture calls · Adapter boundary ready for Claude/backend integration`
+          text: `${assessment.toolTrace.length} live MCP tool calls · Adapter boundary ready for Claude/backend integration`
         }
       ]
     }

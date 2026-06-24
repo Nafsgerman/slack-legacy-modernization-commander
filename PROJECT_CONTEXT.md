@@ -1,66 +1,52 @@
-# Slack Incident Commander Project Context
+# Legacy Modernization Commander Project Context
 
-## Mission
+Legacy Modernization Commander is a Slack-native command center for enterprise legacy modernization teams.
 
-Build a portfolio-grade Slack-native incident response agent for the Slack Agent Builder Challenge.
+The project is built for the Slack Agent Builder Challenge and targets the New Slack Agent track.
 
-The project should demonstrate frontier-lab / FDE-quality product and engineering judgment: a narrow but excellent workflow, clean architecture, deterministic behavior where it matters, thoughtful Slack UX, auditability, and a strong demo story.
+## Product Thesis
 
-## Hackathon
+Legacy modernization is not only a code-conversion problem.
 
-- Platform: Devpost
-- Hackathon: Slack Agent Builder Challenge
-- Deadline: July 14, 2026 at 02:00 GMT+2
-- Internal target: submit-ready well before the public deadline
-- Track target: New Slack Agent, with a possible Best UX / Best Technological Implementation angle
+The harder enterprise problem is coordinating code understanding, business-rule extraction, migration risk, SME review, dependency mapping, and delivery planning across architects, engineers, business owners, compliance, and transformation leaders.
 
-## Product Concept
+Legacy Modernization Commander uses Slack as the operating surface for that workflow.
 
-Slack Incident Commander is an AI-assisted incident coordination agent for security, SRE, and IT operations teams.
+## Current MVP
 
-It helps teams move from alert to coordinated response:
+The MVP command is:
 
-1. Ingest an incident alert in Slack.
-2. Triage severity, confidence, and affected systems.
-3. Open or update an incident channel/thread.
-4. Query tools/MCP-backed context sources.
-5. Maintain an evidence-grounded incident timeline.
-6. Assign responder actions.
-7. Draft stakeholder updates.
-8. Generate a final postmortem.
+    /legacy assess claims-batch
 
-## Quality Bar
+It returns a modernization assessment for a synthetic COBOL claims batch module.
 
-- Code should be readable, typed, modular, and testable.
-- Agent outputs should be grounded in structured tool results, not pure invention.
-- Demo data must be clearly marked as synthetic.
-- The product should feel like an enterprise workflow, not a generic chatbot.
-- The README, architecture diagram, and demo script should be strong enough for a hiring manager or frontier AI lab reviewer.
+The assessment includes:
 
-## Initial Scope
+- Business purpose
+- Modernization risk
+- Extracted business rules
+- Critical dependencies
+- SME questions
+- Recommended migration path
+- Jira-ready work packages
+- Tool-call/audit summary
 
-Build one polished workflow:
+## Required Hackathon Technology
 
-An alert about suspicious Slack OAuth activity arrives. The agent triages it, checks synthetic identity/audit/event context through local tools, posts an incident brief, proposes assignments, records timeline entries, and produces an executive-ready summary.
+The project uses MCP server integration.
 
-## Submission Requirements
+The MCP server exposes modernization tools for module assessment, business-rule extraction, and modernization planning. The Slack workflow calls the MCP-backed analysis client and displays the resulting tool trace.
 
-- Text description of features and functionality.
-- Demo video around 3 minutes.
-- Architecture diagram.
-- URL to Slack developer sandbox.
-- Access for `slackhack@salesforce.com` and `testing@devpost.com`.
-- Public source repository.
-- Open source license.
-- README with setup and run instructions.
+## Engineering Standard
 
-## Working Rules
+This repo is being built as a portfolio-grade engineering artifact.
 
-- Keep the demo path narrow and high quality.
-- Avoid overbuilding a SOC platform.
-- Prefer deterministic demo data and explicit tool traces.
-- Keep all project context in this repository so future threads can resume quickly.
-- Codex works as Lead Staff Engineer and owns 85 percent of architecture, implementation, debugging, tests, and exact commands.
-- Nafees owns the 15 percent that requires local accounts, secrets, manual setup, testing, deployment clicks, demo recording, and pitching.
-- Communication should be direct: exact file paths, exact commands, minimal explanation.
-- Recommended model levels: Medium for docs/planning/simple work, High for architecture/code/integrations, Very High for hard debugging/final review/submission polish.
+Priorities:
+
+- Clear architecture
+- Real tool boundaries
+- Honest non-goals
+- Tests and CI
+- Reliable demo
+- Enterprise-grade product positioning
+- No fake claims about implemented capabilities

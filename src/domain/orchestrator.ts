@@ -5,6 +5,7 @@ import type {
   ModernizationPlan
 } from "./types.ts";
 import { claimsBatchAssessment } from "../demo/fixtures.ts";
+import { mcpLegacyAnalysisClient } from "./mcp-legacy-analysis-client.ts";
 
 class DeterministicLegacyAnalysisClient implements LegacyAnalysisClient {
   async assessModule(moduleId: string): Promise<ModernizationAssessment> {
@@ -12,7 +13,17 @@ class DeterministicLegacyAnalysisClient implements LegacyAnalysisClient {
       throw new Error(`Unknown demo module: ${moduleId}`);
     }
 
-    return claimsBatchAssessment;
+    return {
+      ...claimsBatchAssessment,
+      toolTrace: [
+        {
+          tool: "fixture.legacy.assessment",
+          input: moduleId,
+          outputSummary:
+            "Returned deterministic fixture assessment for local tests and offline development."
+        }
+      ]
+    };
   }
 
   async extractRules(moduleId: string): Promise<BusinessRuleReport> {
@@ -39,5 +50,5 @@ export const deterministicLegacyAnalysisClient = new DeterministicLegacyAnalysis
 
 export const runLegacyAssessmentWorkflow = async (
   moduleId: string,
-  client: LegacyAnalysisClient = deterministicLegacyAnalysisClient
+  client: LegacyAnalysisClient = mcpLegacyAnalysisClient
 ): Promise<ModernizationAssessment> => client.assessModule(moduleId);
