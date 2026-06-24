@@ -23,7 +23,7 @@ The workflow now uses a real MCP server integration for its modernization tool l
 - [x] Rename and clean incident-era docs
 - [x] Add MCP server integration
 - [x] Add MCP-backed legacy analysis client
-- [x] Replace fake fixture trace with real MCP tool trace
+- [x] Replace placeholder trace with real MCP tool trace
 - [x] Test MCP client path in CI
 
 ## MCP Tools Implemented
