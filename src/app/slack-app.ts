@@ -2,8 +2,13 @@ import "dotenv/config";
 import { fileURLToPath } from "node:url";
 import { App } from "@slack/bolt";
 import {
+  legacyAssessmentActionIds,
   renderModernizationAssessmentBlocks,
-  renderModernizationAssessmentText
+  renderModernizationAssessmentText,
+  renderMcpTraceResponse,
+  renderSmeFollowUpResponse,
+  renderSmeReviewedResponse,
+  renderTicketDraftResponse
 } from "./render.ts";
 import { runLegacyAssessmentWorkflow } from "../domain/orchestrator.ts";
 
@@ -21,7 +26,7 @@ const helpText = [
   "Run the demo modernization assessment:",
   "`/legacy assess claims-batch`",
   "",
-  "Current demo: COBOL claims batch modernization assessment with business rules, dependencies, SME questions, migration path, Jira-ready work packages, and tool-call audit summary."
+  "Current demo: COBOL claims batch modernization assessment with business rules, dependencies, SME questions, migration path, ticket-draft work packages, and MCP trace visibility."
 ].join("\n");
 
 const normalizeCommandText = (text: string | undefined): string =>
@@ -34,6 +39,8 @@ export const createSlackApp = (): App => {
     signingSecret: requiredEnv("SLACK_SIGNING_SECRET"),
     socketMode: true
   });
+
+  const loadDemoAssessment = async () => runLegacyAssessmentWorkflow("claims-batch");
 
   app.command("/legacy", async ({ command, ack, logger }) => {
     const normalizedText = normalizeCommandText(command.text);
@@ -61,6 +68,46 @@ export const createSlackApp = (): App => {
           }
         }
       ]
+    });
+  });
+
+  app.action(legacyAssessmentActionIds.markSmeReviewed, async ({ ack, respond }) => {
+    await ack();
+    const assessment = await loadDemoAssessment();
+    await respond({
+      response_type: "ephemeral",
+      replace_original: false,
+      text: renderSmeReviewedResponse(assessment)
+    });
+  });
+
+  app.action(legacyAssessmentActionIds.needsSmeFollowUp, async ({ ack, respond }) => {
+    await ack();
+    const assessment = await loadDemoAssessment();
+    await respond({
+      response_type: "ephemeral",
+      replace_original: false,
+      text: renderSmeFollowUpResponse(assessment)
+    });
+  });
+
+  app.action(legacyAssessmentActionIds.prepareTicketDraft, async ({ ack, respond }) => {
+    await ack();
+    const assessment = await loadDemoAssessment();
+    await respond({
+      response_type: "ephemeral",
+      replace_original: false,
+      text: renderTicketDraftResponse(assessment)
+    });
+  });
+
+  app.action(legacyAssessmentActionIds.showMcpTrace, async ({ ack, respond }) => {
+    await ack();
+    const assessment = await loadDemoAssessment();
+    await respond({
+      response_type: "ephemeral",
+      replace_original: false,
+      text: renderMcpTraceResponse(assessment)
     });
   });
 

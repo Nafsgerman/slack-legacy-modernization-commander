@@ -1,6 +1,13 @@
 import type { KnownBlock } from "@slack/types";
 import type { ModernizationAssessment } from "../domain/types.ts";
 
+export const legacyAssessmentActionIds = {
+  markSmeReviewed: "legacy_mark_sme_reviewed",
+  needsSmeFollowUp: "legacy_needs_sme_follow_up",
+  prepareTicketDraft: "legacy_prepare_ticket_draft",
+  showMcpTrace: "legacy_show_mcp_trace"
+} as const;
+
 const bulletList = (items: string[]): string =>
   items.length > 0 ? items.map((item) => `• ${item}`).join("\n") : "• None captured";
 
@@ -143,6 +150,67 @@ const mrkdwnSection = (text: string): KnownBlock => ({
   }
 });
 
+const actionButton = (
+  text: string,
+  actionId: (typeof legacyAssessmentActionIds)[keyof typeof legacyAssessmentActionIds],
+  value: string
+) => ({
+  type: "button" as const,
+  text: {
+    type: "plain_text" as const,
+    text
+  },
+  action_id: actionId,
+  value
+});
+
+const renderAssessmentActions = (assessment: ModernizationAssessment): KnownBlock => ({
+  type: "actions",
+  elements: [
+    actionButton("Mark reviewed", legacyAssessmentActionIds.markSmeReviewed, assessment.moduleId),
+    actionButton("Need follow-up", legacyAssessmentActionIds.needsSmeFollowUp, assessment.moduleId),
+    actionButton("Draft ticket", legacyAssessmentActionIds.prepareTicketDraft, assessment.moduleId),
+    actionButton("Show trace", legacyAssessmentActionIds.showMcpTrace, assessment.moduleId)
+  ]
+});
+
+export const renderSmeReviewedResponse = (assessment: ModernizationAssessment): string =>
+  `Marked ${assessment.moduleName} as SME reviewed for this demo session only. ` +
+  "No persistent enterprise state was changed.";
+
+export const renderSmeFollowUpResponse = (assessment: ModernizationAssessment): string =>
+  `SME follow-up required for ${assessment.moduleName}. ` +
+  `Validation remains ${assessment.validationStatus}; review is required before implementation planning.`;
+
+export const renderTicketDraftResponse = (assessment: ModernizationAssessment): string => {
+  const [workPackage] = assessment.jiraReadyWorkPackages;
+
+  if (!workPackage) {
+    return `Ticket draft stub for ${assessment.moduleName}: no work package was available. No Jira ticket was created.`;
+  }
+
+  return [
+    `Ticket draft only for ${assessment.moduleName}. No Jira ticket was created.`,
+    `${workPackage.key}: ${workPackage.title}`,
+    `Owner role: ${workPackage.ownerRole}`,
+    `Validation status: ${workPackage.validationStatus}`,
+    `Evidence: ${formatEvidenceRefs(assessment, workPackage.evidenceRefs)}`
+  ].join("\n");
+};
+
+export const renderMcpTraceResponse = (assessment: ModernizationAssessment): string =>
+  [
+    `MCP trace for ${assessment.moduleName}:`,
+    ...assessment.toolTrace.map(
+      (trace) =>
+        `- ${trace.tool}: ${trace.outputSummary}${formatTraceEvidence(
+          assessment,
+          trace.evidenceProduced
+        )}`
+    ),
+    "Trace source: deterministic local fixture through the MCP client/server path."
+  ].join("\n");
+
 export const renderModernizationAssessmentBlocks = (
   assessment: ModernizationAssessment
 ): KnownBlock[] => {
@@ -192,6 +260,7 @@ export const renderModernizationAssessmentBlocks = (
           `Evidence: ${formatEvidenceRefs(assessment, assessment.modernizationRisk.evidenceRefs)}`
       }
     },
+    renderAssessmentActions(assessment),
     {
       type: "divider"
     },
@@ -244,14 +313,6 @@ export const renderModernizationAssessmentBlocks = (
         .map((item) => `• *${item.id}* ${item.sourceName} _${item.sourceType}_`)
         .join("\n")}`
     ),
-    mrkdwnSection(
-      `*MCP trace visibility*\n${assessment.toolTrace
-        .map(
-          (trace) =>
-            `• *${trace.tool}*${formatTraceEvidence(assessment, trace.evidenceProduced)}`
-        )
-        .join("\n")}`
-    ),
     {
       type: "context",
       elements: [
@@ -259,7 +320,7 @@ export const renderModernizationAssessmentBlocks = (
           type: "mrkdwn",
           text:
             `${assessment.toolTrace.length} MCP tool calls · deterministic fixture data · ` +
-            "SME validation required before implementation"
+            "use Show trace for tool details · SME validation required before implementation"
         }
       ]
     }

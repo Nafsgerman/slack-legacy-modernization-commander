@@ -1,8 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  legacyAssessmentActionIds,
   renderModernizationAssessmentBlocks,
-  renderModernizationAssessmentText
+  renderModernizationAssessmentText,
+  renderMcpTraceResponse,
+  renderSmeFollowUpResponse,
+  renderSmeReviewedResponse,
+  renderTicketDraftResponse
 } from "../src/app/render.ts";
 import {
   deterministicLegacyAnalysisClient,
@@ -101,11 +106,45 @@ test("renders decision-oriented Slack Block Kit sections", async () => {
   assert.match(serialized, /Evidence-backed business rules/);
   assert.match(serialized, /Work packages with traceability/);
   assert.match(serialized, /SME validation checklist/);
-  assert.match(serialized, /MCP trace visibility/);
+  assert.match(serialized, /Show trace/);
   assert.match(serialized, /EV-001/);
-  assert.match(serialized, /legacy\.assess_module/);
-  assert.match(serialized, /legacy\.extract_rules/);
-  assert.match(serialized, /legacy\.create_plan/);
+  assert.match(serialized, new RegExp(legacyAssessmentActionIds.markSmeReviewed));
+  assert.match(serialized, new RegExp(legacyAssessmentActionIds.needsSmeFollowUp));
+  assert.match(serialized, new RegExp(legacyAssessmentActionIds.prepareTicketDraft));
+  assert.match(serialized, new RegExp(legacyAssessmentActionIds.showMcpTrace));
+});
+
+test("renders ticket draft action wording without claiming Jira creation", async () => {
+  const assessment = await runLegacyAssessmentWorkflow("claims-batch");
+  const ticketDraft = renderTicketDraftResponse(assessment);
+
+  assert.match(ticketDraft, /draft/i);
+  assert.match(ticketDraft, /No Jira ticket was created/i);
+  assert.doesNotMatch(ticketDraft, /^Created Jira ticket/im);
+  assert.doesNotMatch(ticketDraft, /Jira ticket created successfully/i);
+});
+
+test("renders SME action responses as demo-session state only", async () => {
+  const assessment = await runLegacyAssessmentWorkflow("claims-batch");
+  const reviewed = renderSmeReviewedResponse(assessment);
+  const followUp = renderSmeFollowUpResponse(assessment);
+
+  assert.match(reviewed, /demo session only/i);
+  assert.match(reviewed, /No persistent enterprise state was changed/i);
+  assert.match(followUp, /SME follow-up required/i);
+  assert.match(followUp, /Validation remains sme_required/i);
+});
+
+test("keeps MCP trace available through the Show trace action", async () => {
+  const assessment = await runLegacyAssessmentWorkflow("claims-batch");
+  const blocks = renderModernizationAssessmentBlocks(assessment);
+  const traceResponse = renderMcpTraceResponse(assessment);
+  const serializedBlocks = JSON.stringify(blocks);
+
+  assert.match(serializedBlocks, new RegExp(legacyAssessmentActionIds.showMcpTrace));
+  assert.match(traceResponse, /legacy\.assess_module/);
+  assert.match(traceResponse, /legacy\.extract_rules/);
+  assert.match(traceResponse, /legacy\.create_plan/);
 });
 
 test("rendered Slack output avoids fake production and vendor claims", async () => {
