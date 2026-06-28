@@ -40,6 +40,8 @@ Legacy modernization workflows depend on many specialized tools: code analyzers,
 
 MCP gives the Slack agent a clean way to call those tools without tightly coupling the Slack app to any single backend or vendor.
 
+The architecture intentionally separates Slack interaction, domain orchestration, MCP tool execution, and demo evidence fixtures. This keeps the MVP honest and reviewable: Slack shows the decision brief, the domain layer assembles typed modernization outputs, MCP provides the tool boundary, and deterministic fixtures make the result repeatable under CI. Future integrations such as Claude, Jira, production code analysis, or enterprise audit storage can be added behind these boundaries without changing the core Slack user experience.
+
 ## Current Implementation
 
 Implemented:

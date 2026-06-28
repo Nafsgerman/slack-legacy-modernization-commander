@@ -18,7 +18,7 @@ The workflow should return a decision-ready modernization assessment for the syn
 - business rules with confidence and evidence references
 - dependency concerns with evidence references
 - recommended migration path
-- Jira-ready work packages with evidence references
+- work packages prepared for future ticket creation, with evidence references
 - SME validation checklist
 - MCP trace visibility
 
