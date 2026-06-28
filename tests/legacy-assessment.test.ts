@@ -22,7 +22,7 @@ test("assesses the CLAIMS-BATCH modernization demo module", async () => {
   assert.equal(assessment.language, "COBOL");
   assert.equal(assessment.modernizationRisk.level, "high");
   assert.ok(assessment.extractedBusinessRules.length >= 4);
-  assert.ok(assessment.jiraReadyWorkPackages.length >= 4);
+  assert.ok(assessment.ticketDraftWorkPackages.length >= 4);
 });
 
 test("requires traceable evidence refs for risk, business rules, and work packages", async () => {
@@ -35,7 +35,7 @@ test("requires traceable evidence refs for risk, business rules, and work packag
 
   assertValidRefs(assessment.modernizationRisk.evidenceRefs);
   assessment.extractedBusinessRules.forEach((rule) => assertValidRefs(rule.evidenceRefs));
-  assessment.jiraReadyWorkPackages.forEach((workPackage) =>
+  assessment.ticketDraftWorkPackages.forEach((workPackage) =>
     assertValidRefs(workPackage.evidenceRefs)
   );
   assessment.smeValidationChecklist.forEach((item) => assertValidRefs(item.evidenceRefs));
@@ -79,7 +79,7 @@ test("returns stable deterministic assessment data across runs", async () => {
     moduleName: assessment.moduleName,
     risk: assessment.modernizationRisk,
     rules: assessment.extractedBusinessRules,
-    workPackages: assessment.jiraReadyWorkPackages,
+    workPackages: assessment.ticketDraftWorkPackages,
     evidenceCatalog: assessment.evidenceCatalog
   });
 
@@ -92,7 +92,7 @@ test("renders a Slack/plain-text modernization assessment", async () => {
 
   assert.match(text, /Legacy Modernization Commander/);
   assert.match(text, /System\/module: CLAIMS-BATCH/);
-  assert.match(text, /Jira-ready work packages/);
+  assert.match(text, /Ticket draft work packages/);
   assert.match(text, /Tool-call\/audit summary/);
 });
 
@@ -107,6 +107,7 @@ test("renders decision-oriented Slack Block Kit sections", async () => {
   assert.match(serialized, /Work packages with traceability/);
   assert.match(serialized, /SME validation checklist/);
   assert.match(serialized, /Show trace/);
+  assert.match(serialized, /SME follow-up/);
   assert.match(serialized, /EV-001/);
   assert.match(serialized, new RegExp(legacyAssessmentActionIds.markSmeReviewed));
   assert.match(serialized, new RegExp(legacyAssessmentActionIds.needsSmeFollowUp));
@@ -145,6 +146,11 @@ test("keeps MCP trace available through the Show trace action", async () => {
   assert.match(traceResponse, /legacy\.assess_module/);
   assert.match(traceResponse, /legacy\.extract_rules/);
   assert.match(traceResponse, /legacy\.create_plan/);
+  assert.match(traceResponse, /assessed module risk\. Evidence: EV-/);
+  assert.match(traceResponse, /extracted business rules\. Evidence: EV-/);
+  assert.match(traceResponse, /prepared migration work packages\. Evidence: EV-/);
+  assert.match(traceResponse, /No live mainframe, Jira, or external LLM was called\./);
+  assert.doesNotMatch(traceResponse, /Resolved CLAIMS-BATCH as a COBOL z\/OS batch module/);
 });
 
 test("rendered Slack output avoids fake production and vendor claims", async () => {

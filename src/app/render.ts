@@ -32,6 +32,25 @@ const formatEvidenceRefs = (assessment: ModernizationAssessment, refs: string[])
 const formatTraceEvidence = (assessment: ModernizationAssessment, refs?: string[]): string =>
   refs && refs.length > 0 ? ` [evidence: ${formatEvidenceRefs(assessment, refs)}]` : "";
 
+const formatEvidenceIds = (refs?: string[]): string =>
+  refs && refs.length > 0 ? [...new Set(refs)].join(", ") : "none";
+
+const summarizeTraceAction = (tool: string): string => {
+  if (tool === "legacy.assess_module") {
+    return "assessed module risk";
+  }
+
+  if (tool === "legacy.extract_rules") {
+    return "extracted business rules";
+  }
+
+  if (tool === "legacy.create_plan") {
+    return "prepared migration work packages";
+  }
+
+  return "ran modernization tool";
+};
+
 export const renderModernizationAssessmentText = (assessment: ModernizationAssessment): string => {
   const rules = assessment.extractedBusinessRules
     .map(
@@ -59,7 +78,7 @@ export const renderModernizationAssessmentText = (assessment: ModernizationAsses
     .map((step, index) => `${index + 1}. ${step}`)
     .join("\n");
 
-  const workPackages = assessment.jiraReadyWorkPackages
+  const workPackages = assessment.ticketDraftWorkPackages
     .map(
       (ticket) =>
         `- ${ticket.key} [${ticket.priority.toUpperCase()}] ${ticket.title} - ${ticket.ownerRole} ` +
@@ -128,7 +147,7 @@ export const renderModernizationAssessmentText = (assessment: ModernizationAsses
     "Recommended migration path:",
     path,
     "",
-    "Jira-ready work packages:",
+    "Ticket draft work packages:",
     workPackages,
     "",
     "SME validation checklist:",
@@ -168,7 +187,7 @@ const renderAssessmentActions = (assessment: ModernizationAssessment): KnownBloc
   type: "actions",
   elements: [
     actionButton("Mark reviewed", legacyAssessmentActionIds.markSmeReviewed, assessment.moduleId),
-    actionButton("Need follow-up", legacyAssessmentActionIds.needsSmeFollowUp, assessment.moduleId),
+    actionButton("SME follow-up", legacyAssessmentActionIds.needsSmeFollowUp, assessment.moduleId),
     actionButton("Draft ticket", legacyAssessmentActionIds.prepareTicketDraft, assessment.moduleId),
     actionButton("Show trace", legacyAssessmentActionIds.showMcpTrace, assessment.moduleId)
   ]
@@ -183,7 +202,7 @@ export const renderSmeFollowUpResponse = (assessment: ModernizationAssessment): 
   `Validation remains ${assessment.validationStatus}; review is required before implementation planning.`;
 
 export const renderTicketDraftResponse = (assessment: ModernizationAssessment): string => {
-  const [workPackage] = assessment.jiraReadyWorkPackages;
+  const [workPackage] = assessment.ticketDraftWorkPackages;
 
   if (!workPackage) {
     return `Ticket draft stub for ${assessment.moduleName}: no work package was available. No Jira ticket was created.`;
@@ -203,12 +222,12 @@ export const renderMcpTraceResponse = (assessment: ModernizationAssessment): str
     `MCP trace for ${assessment.moduleName}:`,
     ...assessment.toolTrace.map(
       (trace) =>
-        `- ${trace.tool}: ${trace.outputSummary}${formatTraceEvidence(
-          assessment,
+        `- ${trace.tool}: ${summarizeTraceAction(trace.tool)}. Evidence: ${formatEvidenceIds(
           trace.evidenceProduced
         )}`
     ),
-    "Trace source: deterministic local fixture through the MCP client/server path."
+    "Trace source: deterministic local fixture through the MCP client/server path.",
+    "No live mainframe, Jira, or external LLM was called."
   ].join("\n");
 
 export const renderModernizationAssessmentBlocks = (
@@ -290,7 +309,7 @@ export const renderModernizationAssessmentBlocks = (
         .join("\n")}`
     ),
     mrkdwnSection(
-      `*Work packages with traceability*\n${assessment.jiraReadyWorkPackages
+      `*Work packages with traceability*\n${assessment.ticketDraftWorkPackages
         .map(
           (ticket) =>
             `• *${ticket.key}* ${ticket.title} _${ticket.priority.toUpperCase()} · ${

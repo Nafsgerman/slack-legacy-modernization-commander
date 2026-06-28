@@ -93,9 +93,9 @@ export const createPlan = (moduleId: string): ModernizationPlanToolResult => {
   return {
     moduleId: assessment.moduleId,
     migrationPath: assessment.recommendedMigrationPath,
-    workPackages: assessment.jiraReadyWorkPackages,
+    workPackages: assessment.ticketDraftWorkPackages,
     outputSummary:
-      `Generated ${assessment.jiraReadyWorkPackages.length} Jira-ready work packages and ` +
+      `Prepared ${assessment.ticketDraftWorkPackages.length} ticket-draft work packages and ` +
       `${assessment.recommendedMigrationPath.length} migration path steps for ${assessment.moduleName}.`
   };
 };

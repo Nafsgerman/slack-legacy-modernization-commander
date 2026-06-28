@@ -107,7 +107,7 @@ export interface ModernizationAssessment {
   dependencies: Dependency[];
   unknowns: SmeQuestion[];
   recommendedMigrationPath: string[];
-  jiraReadyWorkPackages: WorkPackage[];
+  ticketDraftWorkPackages: WorkPackage[];
   smeValidationChecklist: SmeValidationChecklistItem[];
   toolTrace: ToolTraceEntry[];
 }

@@ -51,7 +51,7 @@ server.registerTool(
   {
     title: "Create modernization plan",
     description:
-      "Create migration path steps and Jira-ready work packages for a legacy module.",
+      "Create migration path steps and ticket-draft work packages for a legacy module.",
     inputSchema: moduleSchema
   },
   async ({ moduleId }) => asToolResponse(createPlan(moduleId))

@@ -143,7 +143,7 @@ export class McpLegacyAnalysisClient implements LegacyAnalysisClient {
         dependencies: moduleAssessment.dependencies,
         unknowns: moduleAssessment.unknowns,
         recommendedMigrationPath: plan.migrationPath,
-        jiraReadyWorkPackages: plan.workPackages,
+        ticketDraftWorkPackages: plan.workPackages,
         smeValidationChecklist: moduleAssessment.smeValidationChecklist,
         toolTrace: trace
       };

@@ -212,7 +212,7 @@ export const claimsBatchAssessment: ModernizationAssessment = {
     "Keep existing payment file contract stable while introducing versioned adapters around downstream outputs.",
     "Run side-by-side reconciliation for at least two month-end cycles before cutover."
   ],
-  jiraReadyWorkPackages: [
+  ticketDraftWorkPackages: [
     {
       key: "LMC-101",
       title: "Create golden test dataset for CLAIMS-BATCH",
@@ -328,7 +328,7 @@ export const claimsBatchAssessment: ModernizationAssessment = {
     {
       tool: "legacy.create_plan",
       input: "CLAIMS-BATCH modernization assessment",
-      outputSummary: "Generated four Jira-ready work packages for test, SME validation, dependency mapping, and migration design.",
+      outputSummary: "Prepared four ticket-draft work packages for test, SME validation, dependency mapping, and migration design.",
       evidenceProduced: ["EV-001", "EV-002", "EV-003", "EV-004", "EV-005", "EV-006", "EV-007"]
     }
   ]
