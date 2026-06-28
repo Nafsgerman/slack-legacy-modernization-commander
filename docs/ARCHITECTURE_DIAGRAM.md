@@ -12,7 +12,7 @@ flowchart TD
     tools[MCP modernization tools<br/>src/mcp/tools.ts]
     fixtures[Deterministic demo fixtures<br/>src/demo/fixtures.ts]
     renderer[Slack renderer<br/>src/app/render.ts]
-    response[Slack modernization assessment<br/>risk, rules, dependencies,<br/>SME questions, Jira-ready work packages]
+    response[Slack modernization assessment<br/>risk, rules, dependencies,<br/>SME questions, work packages]
 
     user --> slack
     slack --> bolt
@@ -45,10 +45,10 @@ flowchart TD
 6. The tools read deterministic demo fixture data for repeatable hackathon behavior.
 7. The MCP client assembles the final `ModernizationAssessment`.
 8. The Slack renderer returns a concise command-center assessment to Slack.
-9. The response includes a live MCP tool-call audit summary.
+9. The response includes a local MCP tool-call audit summary.
 
 ## MVP Boundary
 
 The current MVP intentionally uses deterministic fixture data. The MCP client/server execution path is real; the enterprise data source is synthetic.
 
-Future integrations can replace the fixture-backed tools with real legacy-code analysis services, dependency mappers, Jira, Claude-powered synthesis, and SME approval workflows.
+Future integrations can replace the fixture-backed tools with real legacy-code analysis services, dependency mappers, Jira/Linear/ServiceNow ticket creation, LLM-backed synthesis, and SME approval workflows.

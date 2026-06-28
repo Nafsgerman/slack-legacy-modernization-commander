@@ -4,7 +4,7 @@
 
 Legacy Modernization Commander is a Slack-native command center for enterprise legacy modernization teams.
 
-It turns a legacy module into a business-readable modernization assessment with risk, business rules, dependencies, SME questions, migration path, and Jira-ready work packages.
+It turns a legacy module into a business-readable modernization assessment with risk, business rules, dependencies, SME questions, migration path, and work packages prepared for future ticket creation.
 
 ## Required Technology
 
@@ -44,8 +44,8 @@ The demo data is deterministic, but the MCP client/server path and tool-call tra
 - Critical dependencies
 - SME questions before migration
 - Recommended migration path
-- Jira-ready work packages
-- Live MCP tool-call audit summary
+- Work packages prepared for future ticket creation
+- Local MCP tool-call audit summary
 
 ## Key Message for Judges
 
@@ -59,13 +59,13 @@ This project uses Slack as the operating surface and MCP as the tool-integration
 
 This MVP intentionally uses deterministic fixture data.
 
-It does not claim production-grade COBOL parsing or live enterprise integrations. The goal is to demonstrate the agentic workflow, Slack-native interaction model, MCP-backed tool boundary, assessment shape, and clean adapter path for future Claude/backend integration.
+It does not claim production-grade COBOL parsing, live enterprise integrations, Claude execution, or Jira ticket creation. The goal is to demonstrate the agentic workflow, Slack-native interaction model, MCP-backed tool boundary, assessment shape, and clean adapter path for future LLM/backend integration.
 
 ## Future Extensions
 
 - Connect the MCP tools to a real legacy-code analysis backend
-- Add Claude-powered synthesis over MCP tool results
-- Create Jira tickets from approved work packages
+- Add LLM-backed synthesis over MCP tool results
+- Create Jira/Linear/ServiceNow tickets from approved work packages
 - Add SME approval workflows
 - Add dependency graphs and migration-readiness scoring
 - Support additional legacy environments such as Assembler, PL/I, RPG, Smalltalk, and SAP ABAP

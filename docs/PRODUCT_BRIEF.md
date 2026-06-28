@@ -4,7 +4,7 @@
 
 Legacy Modernization Commander is a Slack-native command center for enterprise legacy modernization teams.
 
-It turns a legacy module into a business-readable modernization assessment with migration risk, extracted business rules, dependencies, SME questions, recommended migration path, and Jira-ready work packages.
+It turns a legacy module into a business-readable modernization assessment with migration risk, extracted business rules, dependencies, SME questions, recommended migration path, and work packages prepared for future ticket creation.
 
 ## Problem
 
@@ -32,7 +32,7 @@ The app returns:
 - Which dependencies matter
 - Which SME questions must be answered
 - Which migration path is recommended
-- Which Jira-ready work packages should move next
+- Which work packages should move next after SME validation
 
 ## Positioning
 
@@ -44,4 +44,4 @@ It is a workflow orchestration layer for modernization teams. It brings code und
 
 The current implementation uses deterministic local fixtures for reliability and repeatability.
 
-Future integrations can connect the adapter boundary to Claude, a legacy-code analysis backend, Jira, dependency mapping tools, or enterprise knowledge systems.
+Future integrations can connect the adapter boundary to an LLM, a legacy-code analysis backend, Jira/Linear/ServiceNow, dependency mapping tools, or enterprise knowledge systems.

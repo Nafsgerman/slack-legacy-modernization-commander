@@ -14,7 +14,7 @@ It returns a structured modernization assessment for a synthetic COBOL claims ba
 - Critical dependencies
 - SME questions
 - Recommended migration path
-- Jira-ready work packages
+- Work packages prepared for future ticket creation
 - Tool-call/audit summary
 
 ## Recommended Reading Order
@@ -29,6 +29,6 @@ It returns a structured modernization assessment for a synthetic COBOL claims ba
 
 ## MVP Boundary
 
-This is a deterministic hackathon vertical slice. It does not connect to live enterprise systems, perform production-grade COBOL parsing, or create Jira tickets yet.
+This is a deterministic hackathon vertical slice. It does not connect to live enterprise systems, perform production-grade COBOL parsing, or create Jira tickets.
 
-The purpose is to demonstrate the Slack-native workflow, modernization assessment shape, and clean adapter boundary for future Claude/backend integration.
+The purpose is to demonstrate the Slack-native workflow, modernization assessment shape, and clean adapter boundary for future LLM/backend integration.

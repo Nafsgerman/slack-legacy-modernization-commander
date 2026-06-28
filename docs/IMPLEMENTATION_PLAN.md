@@ -38,8 +38,8 @@ The workflow now uses a real MCP server integration for its modernization tool l
 2. Add README screenshot.
 3. Improve Slack UX with a more compact executive summary.
 4. Add optional `/legacy rules claims-batch`.
-5. Add optional `/legacy tickets claims-batch`.
-6. Add optional Claude reasoning over MCP tool results.
+5. Add optional `/legacy tickets claims-batch` future integration after approvals and ticketing credentials exist.
+6. Add optional LLM reasoning over MCP tool results behind the existing adapter boundary.
 7. Add Devpost submission materials.
 
 ## Quality Bar

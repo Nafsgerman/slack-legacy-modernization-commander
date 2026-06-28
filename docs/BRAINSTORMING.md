@@ -35,7 +35,7 @@ The MVP returns:
 - Critical dependencies
 - SME questions
 - Recommended migration path
-- Jira-ready work packages
+- Work packages prepared for future ticket creation
 - Tool-call/audit summary
 
 ## Why This Is Better Than a Generic Chatbot
@@ -57,7 +57,7 @@ Show strong engineering judgment by keeping a clean adapter boundary, determinis
 - Add `/legacy rules claims-batch`
 - Add `/legacy tickets claims-batch`
 - Add `/legacy plan claims-batch`
-- Connect to Claude for rule extraction
+- Connect to an LLM for rule extraction
 - Connect to a legacy-code analysis backend
 - Connect to Jira for ticket creation
 - Add SME approval workflow in Slack
