@@ -92,8 +92,10 @@ test("renders a Slack/plain-text modernization assessment", async () => {
 
   assert.match(text, /Legacy Modernization Commander/);
   assert.match(text, /System\/module: CLAIMS-BATCH/);
+  assert.match(text, /Validation status: SME review required/);
   assert.match(text, /Ticket draft work packages/);
   assert.match(text, /Tool-call\/audit summary/);
+  assert.doesNotMatch(text, /sme_required/);
 });
 
 test("renders decision-oriented Slack Block Kit sections", async () => {
@@ -108,7 +110,9 @@ test("renders decision-oriented Slack Block Kit sections", async () => {
   assert.match(serialized, /SME validation checklist/);
   assert.match(serialized, /Show trace/);
   assert.match(serialized, /SME follow-up/);
+  assert.match(serialized, /SME review required/);
   assert.match(serialized, /EV-001/);
+  assert.doesNotMatch(serialized, /sme_required/);
   assert.match(serialized, new RegExp(legacyAssessmentActionIds.markSmeReviewed));
   assert.match(serialized, new RegExp(legacyAssessmentActionIds.needsSmeFollowUp));
   assert.match(serialized, new RegExp(legacyAssessmentActionIds.prepareTicketDraft));
@@ -121,6 +125,8 @@ test("renders ticket draft action wording without claiming Jira creation", async
 
   assert.match(ticketDraft, /draft/i);
   assert.match(ticketDraft, /No Jira ticket was created/i);
+  assert.match(ticketDraft, /Validation status: SME review required/i);
+  assert.doesNotMatch(ticketDraft, /sme_required/);
   assert.doesNotMatch(ticketDraft, /^Created Jira ticket/im);
   assert.doesNotMatch(ticketDraft, /Jira ticket created successfully/i);
 });
@@ -133,7 +139,8 @@ test("renders SME action responses as demo-session state only", async () => {
   assert.match(reviewed, /demo session only/i);
   assert.match(reviewed, /No persistent enterprise state was changed/i);
   assert.match(followUp, /SME follow-up required/i);
-  assert.match(followUp, /Validation remains sme_required/i);
+  assert.match(followUp, /Validation remains SME review required/i);
+  assert.doesNotMatch(followUp, /sme_required/);
 });
 
 test("keeps MCP trace available through the Show trace action", async () => {

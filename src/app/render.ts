@@ -1,5 +1,5 @@
 import type { KnownBlock } from "@slack/types";
-import type { ModernizationAssessment } from "../domain/types.ts";
+import type { ModernizationAssessment, ValidationStatus } from "../domain/types.ts";
 
 export const legacyAssessmentActionIds = {
   markSmeReviewed: "legacy_mark_sme_reviewed",
@@ -29,6 +29,14 @@ const formatEvidenceRefs = (assessment: ModernizationAssessment, refs: string[])
     .join(", ");
 };
 
+const formatValidationStatus = (status: ValidationStatus): string => {
+  if (status === "sme_required") {
+    return "SME review required";
+  }
+
+  return status;
+};
+
 const formatTraceEvidence = (assessment: ModernizationAssessment, refs?: string[]): string =>
   refs && refs.length > 0 ? ` [evidence: ${formatEvidenceRefs(assessment, refs)}]` : "";
 
@@ -55,7 +63,9 @@ export const renderModernizationAssessmentText = (assessment: ModernizationAsses
   const rules = assessment.extractedBusinessRules
     .map(
       (rule) =>
-        `- ${rule.id}: ${rule.title} (${rule.confidence}, ${rule.validationStatus}) ` +
+        `- ${rule.id}: ${rule.title} (${rule.confidence}, ${formatValidationStatus(
+          rule.validationStatus
+        )}) ` +
         `[evidence: ${formatEvidenceRefs(assessment, rule.evidenceRefs)}]\n  ${rule.description}`
     )
     .join("\n");
@@ -82,7 +92,7 @@ export const renderModernizationAssessmentText = (assessment: ModernizationAsses
     .map(
       (ticket) =>
         `- ${ticket.key} [${ticket.priority.toUpperCase()}] ${ticket.title} - ${ticket.ownerRole} ` +
-        `(${ticket.validationStatus}) [evidence: ${formatEvidenceRefs(
+        `(${formatValidationStatus(ticket.validationStatus)}) [evidence: ${formatEvidenceRefs(
           assessment,
           ticket.evidenceRefs
         )}]: ` +
@@ -97,7 +107,9 @@ export const renderModernizationAssessmentText = (assessment: ModernizationAsses
   const checklist = assessment.smeValidationChecklist
     .map(
       (item) =>
-        `- ${item.id}: ${item.title} - ${item.ownerRole} (${item.status}) ` +
+        `- ${item.id}: ${item.title} - ${item.ownerRole} (${formatValidationStatus(
+          item.status
+        )}) ` +
         `[evidence: ${formatEvidenceRefs(assessment, item.evidenceRefs)}]\n  ${item.checklist.join(
           "; "
         )}`
@@ -123,12 +135,14 @@ export const renderModernizationAssessmentText = (assessment: ModernizationAsses
     `Assessment: ${assessment.assessmentId}`,
     `Generated UTC: ${assessment.generatedAtUtc}`,
     `Overall confidence: ${assessment.confidence}`,
-    `Validation status: ${assessment.validationStatus}`,
+    `Validation status: ${formatValidationStatus(assessment.validationStatus)}`,
     "",
     "Business purpose:",
     assessment.businessPurpose,
     "",
-    `Modernization risk: ${assessment.modernizationRisk.level.toUpperCase()} (${assessment.modernizationRisk.confidence}, ${assessment.modernizationRisk.validationStatus})`,
+    `Modernization risk: ${assessment.modernizationRisk.level.toUpperCase()} (${
+      assessment.modernizationRisk.confidence
+    }, ${formatValidationStatus(assessment.modernizationRisk.validationStatus)})`,
     `Evidence: ${formatEvidenceRefs(assessment, assessment.modernizationRisk.evidenceRefs)}`,
     assessment.modernizationRisk.rationale,
     "",
@@ -199,7 +213,9 @@ export const renderSmeReviewedResponse = (assessment: ModernizationAssessment): 
 
 export const renderSmeFollowUpResponse = (assessment: ModernizationAssessment): string =>
   `SME follow-up required for ${assessment.moduleName}. ` +
-  `Validation remains ${assessment.validationStatus}; review is required before implementation planning.`;
+  `Validation remains ${formatValidationStatus(
+    assessment.validationStatus
+  )}; review is required before implementation planning.`;
 
 export const renderTicketDraftResponse = (assessment: ModernizationAssessment): string => {
   const [workPackage] = assessment.ticketDraftWorkPackages;
@@ -212,7 +228,7 @@ export const renderTicketDraftResponse = (assessment: ModernizationAssessment): 
     `Ticket draft only for ${assessment.moduleName}. No Jira ticket was created.`,
     `${workPackage.key}: ${workPackage.title}`,
     `Owner role: ${workPackage.ownerRole}`,
-    `Validation status: ${workPackage.validationStatus}`,
+    `Validation status: ${formatValidationStatus(workPackage.validationStatus)}`,
     `Evidence: ${formatEvidenceRefs(assessment, workPackage.evidenceRefs)}`
   ].join("\n");
 };
@@ -266,7 +282,10 @@ export const renderModernizationAssessmentBlocks = (
         { type: "mrkdwn", text: `*Platform*\n${assessment.platform}` },
         { type: "mrkdwn", text: `*Risk*\n${assessment.modernizationRisk.level.toUpperCase()}` },
         { type: "mrkdwn", text: `*Confidence*\n${assessment.confidence}` },
-        { type: "mrkdwn", text: `*Validation*\n${assessment.validationStatus}` }
+        {
+          type: "mrkdwn",
+          text: `*Validation*\n${formatValidationStatus(assessment.validationStatus)}`
+        }
       ]
     },
     {
@@ -287,7 +306,9 @@ export const renderModernizationAssessmentBlocks = (
       `*Evidence-backed business rules*\n${topRules
         .map(
           (rule) =>
-            `• *${rule.id}* ${rule.title} _${rule.confidence}; ${rule.validationStatus}_ ` +
+            `• *${rule.id}* ${rule.title} _${rule.confidence}; ${formatValidationStatus(
+              rule.validationStatus
+            )}_ ` +
             `[${formatEvidenceRefs(assessment, rule.evidenceRefs)}]`
         )
         .join("\n")}`
@@ -322,7 +343,9 @@ export const renderModernizationAssessmentBlocks = (
       `*SME validation checklist*\n${topChecklist
         .map(
           (item) =>
-            `• *${item.id}* ${item.title} - ${item.ownerRole} _${item.status}_ ` +
+            `• *${item.id}* ${item.title} - ${item.ownerRole} _${formatValidationStatus(
+              item.status
+            )}_ ` +
             `[${formatEvidenceRefs(assessment, item.evidenceRefs)}]`
         )
         .join("\n")}`
