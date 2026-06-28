@@ -1,19 +1,47 @@
+import type { KnownBlock } from "@slack/types";
 import type { ModernizationAssessment } from "../domain/types.ts";
 
-const bulletList = (items: string[]): string => items.map((item) => `• ${item}`).join("\n");
+const bulletList = (items: string[]): string =>
+  items.length > 0 ? items.map((item) => `• ${item}`).join("\n") : "• None captured";
 
 const firstSentence = (text: string): string => {
   const [sentence] = text.split(". ");
   return sentence.endsWith(".") ? sentence : `${sentence}.`;
 };
 
+const formatEvidenceRefs = (assessment: ModernizationAssessment, refs: string[]): string => {
+  const evidenceById = new Map(
+    assessment.evidenceCatalog.evidence.map((evidence) => [evidence.id, evidence])
+  );
+
+  return refs
+    .map((ref) => {
+      const evidence = evidenceById.get(ref);
+      return evidence ? `${ref} ${evidence.sourceName}` : ref;
+    })
+    .join(", ");
+};
+
+const formatTraceEvidence = (assessment: ModernizationAssessment, refs?: string[]): string =>
+  refs && refs.length > 0 ? ` [evidence: ${formatEvidenceRefs(assessment, refs)}]` : "";
+
 export const renderModernizationAssessmentText = (assessment: ModernizationAssessment): string => {
   const rules = assessment.extractedBusinessRules
-    .map((rule) => `- ${rule.id}: ${rule.title} (${rule.confidence}) — ${rule.description}`)
+    .map(
+      (rule) =>
+        `- ${rule.id}: ${rule.title} (${rule.confidence}, ${rule.validationStatus}) ` +
+        `[evidence: ${formatEvidenceRefs(assessment, rule.evidenceRefs)}]\n  ${rule.description}`
+    )
     .join("\n");
 
   const dependencies = assessment.dependencies
-    .map((dependency) => `- ${dependency.name} [${dependency.type}]: ${dependency.modernizationConcern}`)
+    .map(
+      (dependency) =>
+        `- ${dependency.name} [${dependency.type}] [evidence: ${formatEvidenceRefs(
+          assessment,
+          dependency.evidenceRefs
+        )}]: ${dependency.modernizationConcern}`
+    )
     .join("\n");
 
   const unknowns = assessment.unknowns
@@ -27,12 +55,37 @@ export const renderModernizationAssessmentText = (assessment: ModernizationAsses
   const workPackages = assessment.jiraReadyWorkPackages
     .map(
       (ticket) =>
-        `- ${ticket.key} [${ticket.priority.toUpperCase()}] ${ticket.title} — ${ticket.ownerRole}: ${ticket.description}`
+        `- ${ticket.key} [${ticket.priority.toUpperCase()}] ${ticket.title} - ${ticket.ownerRole} ` +
+        `(${ticket.validationStatus}) [evidence: ${formatEvidenceRefs(
+          assessment,
+          ticket.evidenceRefs
+        )}]: ` +
+        ticket.description
+    )
+    .join("\n");
+
+  const evidence = assessment.evidenceCatalog.evidence
+    .map((item) => `- ${item.id} [${item.sourceType}] ${item.sourceName}`)
+    .join("\n");
+
+  const checklist = assessment.smeValidationChecklist
+    .map(
+      (item) =>
+        `- ${item.id}: ${item.title} - ${item.ownerRole} (${item.status}) ` +
+        `[evidence: ${formatEvidenceRefs(assessment, item.evidenceRefs)}]\n  ${item.checklist.join(
+          "; "
+        )}`
     )
     .join("\n");
 
   const toolTrace = assessment.toolTrace
-    .map((trace) => `- ${trace.tool}: ${trace.outputSummary}`)
+    .map(
+      (trace) =>
+        `- ${trace.tool}: ${trace.outputSummary}${formatTraceEvidence(
+          assessment,
+          trace.evidenceProduced
+        )}`
+    )
     .join("\n");
 
   return [
@@ -42,11 +95,15 @@ export const renderModernizationAssessmentText = (assessment: ModernizationAsses
     `Language: ${assessment.language}`,
     `Platform: ${assessment.platform}`,
     `Assessment: ${assessment.assessmentId}`,
+    `Generated UTC: ${assessment.generatedAtUtc}`,
+    `Overall confidence: ${assessment.confidence}`,
+    `Validation status: ${assessment.validationStatus}`,
     "",
     "Business purpose:",
     assessment.businessPurpose,
     "",
-    `Modernization risk: ${assessment.modernizationRisk.level.toUpperCase()}`,
+    `Modernization risk: ${assessment.modernizationRisk.level.toUpperCase()} (${assessment.modernizationRisk.confidence}, ${assessment.modernizationRisk.validationStatus})`,
+    `Evidence: ${formatEvidenceRefs(assessment, assessment.modernizationRisk.evidenceRefs)}`,
     assessment.modernizationRisk.rationale,
     "",
     "Risk drivers:",
@@ -67,18 +124,33 @@ export const renderModernizationAssessmentText = (assessment: ModernizationAsses
     "Jira-ready work packages:",
     workPackages,
     "",
+    "SME validation checklist:",
+    checklist,
+    "",
+    "Evidence catalog:",
+    evidence,
+    "",
     "Tool-call/audit summary:",
     toolTrace
   ].join("\n");
 };
 
+const mrkdwnSection = (text: string): KnownBlock => ({
+  type: "section",
+  text: {
+    type: "mrkdwn",
+    text
+  }
+});
+
 export const renderModernizationAssessmentBlocks = (
   assessment: ModernizationAssessment
-): Record<string, unknown>[] => {
+): KnownBlock[] => {
   const topRules = assessment.extractedBusinessRules.slice(0, 3);
   const topDependencies = assessment.dependencies.slice(0, 3);
-  const topQuestions = assessment.unknowns.slice(0, 2);
+  const topChecklist = assessment.smeValidationChecklist.slice(0, 3);
   const nextMoves = assessment.recommendedMigrationPath.slice(0, 3);
+  const topEvidence = assessment.evidenceCatalog.evidence.slice(0, 5);
 
   return [
     {
@@ -89,12 +161,25 @@ export const renderModernizationAssessmentBlocks = (
       }
     },
     {
+      type: "context",
+      elements: [
+        {
+          type: "mrkdwn",
+          text:
+            `Assessment ${assessment.assessmentId} · Generated UTC ${assessment.generatedAtUtc} · ` +
+            `Deterministic demo fixture`
+        }
+      ]
+    },
+    {
       type: "section",
       fields: [
         { type: "mrkdwn", text: `*Module*\n${assessment.moduleName}` },
         { type: "mrkdwn", text: `*Language*\n${assessment.language}` },
         { type: "mrkdwn", text: `*Platform*\n${assessment.platform}` },
-        { type: "mrkdwn", text: `*Risk*\n${assessment.modernizationRisk.level.toUpperCase()}` }
+        { type: "mrkdwn", text: `*Risk*\n${assessment.modernizationRisk.level.toUpperCase()}` },
+        { type: "mrkdwn", text: `*Confidence*\n${assessment.confidence}` },
+        { type: "mrkdwn", text: `*Validation*\n${assessment.validationStatus}` }
       ]
     },
     {
@@ -103,63 +188,78 @@ export const renderModernizationAssessmentBlocks = (
         type: "mrkdwn",
         text:
           `*Assessment*\n${firstSentence(assessment.businessPurpose)}\n\n` +
-          `*Why it matters*\n${assessment.modernizationRisk.rationale}`
+          `*Risk decision*\n${assessment.modernizationRisk.rationale}\n` +
+          `Evidence: ${formatEvidenceRefs(assessment, assessment.modernizationRisk.evidenceRefs)}`
       }
     },
     {
       type: "divider"
     },
-    {
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: `*Business rules detected*\n${topRules
-          .map((rule) => `• *${rule.id}* ${rule.title} _(${rule.confidence})_`)
-          .join("\n")}`
-      }
-    },
-    {
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: `*Critical dependencies*\n${topDependencies
-          .map((dependency) => `• *${dependency.name}* _${dependency.type}_`)
-          .join("\n")}`
-      }
-    },
-    {
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: `*SME questions before migration*\n${topQuestions
-          .map((unknown) => `• ${unknown.question}`)
-          .join("\n")}`
-      }
-    },
-    {
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: `*Recommended path*\n${nextMoves
-          .map((step, index) => `${index + 1}. ${step}`)
-          .join("\n")}`
-      }
-    },
-    {
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: `*Jira-ready work packages*\n${assessment.jiraReadyWorkPackages
-          .map((ticket) => `• *${ticket.key}* ${ticket.title} — _${ticket.ownerRole}_`)
-          .join("\n")}`
-      }
-    },
+    mrkdwnSection(
+      `*Evidence-backed business rules*\n${topRules
+        .map(
+          (rule) =>
+            `• *${rule.id}* ${rule.title} _${rule.confidence}; ${rule.validationStatus}_ ` +
+            `[${formatEvidenceRefs(assessment, rule.evidenceRefs)}]`
+        )
+        .join("\n")}`
+    ),
+    mrkdwnSection(
+      `*Critical dependencies*\n${topDependencies
+        .map(
+          (dependency) =>
+            `• *${dependency.name}* _${dependency.type}_ [${formatEvidenceRefs(
+              assessment,
+              dependency.evidenceRefs
+            )}]`
+        )
+        .join("\n")}`
+    ),
+    mrkdwnSection(
+      `*Recommended path*\n${nextMoves
+        .map((step, index) => `${index + 1}. ${step}`)
+        .join("\n")}`
+    ),
+    mrkdwnSection(
+      `*Work packages with traceability*\n${assessment.jiraReadyWorkPackages
+        .map(
+          (ticket) =>
+            `• *${ticket.key}* ${ticket.title} _${ticket.priority.toUpperCase()} · ${
+              ticket.ownerRole
+            }_ [${formatEvidenceRefs(assessment, ticket.evidenceRefs)}]`
+        )
+        .join("\n")}`
+    ),
+    mrkdwnSection(
+      `*SME validation checklist*\n${topChecklist
+        .map(
+          (item) =>
+            `• *${item.id}* ${item.title} - ${item.ownerRole} _${item.status}_ ` +
+            `[${formatEvidenceRefs(assessment, item.evidenceRefs)}]`
+        )
+        .join("\n")}`
+    ),
+    mrkdwnSection(
+      `*Evidence catalog preview*\n${topEvidence
+        .map((item) => `• *${item.id}* ${item.sourceName} _${item.sourceType}_`)
+        .join("\n")}`
+    ),
+    mrkdwnSection(
+      `*MCP trace visibility*\n${assessment.toolTrace
+        .map(
+          (trace) =>
+            `• *${trace.tool}*${formatTraceEvidence(assessment, trace.evidenceProduced)}`
+        )
+        .join("\n")}`
+    ),
     {
       type: "context",
       elements: [
         {
           type: "mrkdwn",
-          text: `${assessment.toolTrace.length} live MCP tool calls · Adapter boundary ready for Claude/backend integration`
+          text:
+            `${assessment.toolTrace.length} MCP tool calls · deterministic fixture data · ` +
+            "SME validation required before implementation"
         }
       ]
     }

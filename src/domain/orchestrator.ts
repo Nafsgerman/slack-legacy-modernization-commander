@@ -17,10 +17,13 @@ class DeterministicLegacyAnalysisClient implements LegacyAnalysisClient {
       ...claimsBatchAssessment,
       toolTrace: [
         {
-          tool: "fixture.legacy.assessment",
+          tool: "legacy.assess_module",
           input: moduleId,
           outputSummary:
-            "Returned deterministic fixture assessment for local tests and offline development."
+            "Returned deterministic fixture assessment for local tests and offline development.",
+          evidenceProduced: claimsBatchAssessment.evidenceCatalog.evidence.map(
+            (evidence) => evidence.id
+          )
         }
       ]
     };

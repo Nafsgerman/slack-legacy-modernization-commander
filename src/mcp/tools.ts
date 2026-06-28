@@ -1,7 +1,9 @@
 import type {
   BusinessRule,
   Dependency,
+  EvidenceCatalog,
   ModernizationAssessment,
+  SmeValidationChecklistItem,
   SmeQuestion,
   WorkPackage
 } from "../domain/types.ts";
@@ -9,14 +11,19 @@ import { claimsBatchAssessment } from "../demo/fixtures.ts";
 
 export interface ModuleAssessmentToolResult {
   assessmentId: string;
+  generatedAtUtc: string;
   moduleId: string;
   moduleName: string;
   language: string;
   platform: string;
   businessPurpose: string;
+  confidence: ModernizationAssessment["confidence"];
+  validationStatus: ModernizationAssessment["validationStatus"];
+  evidenceCatalog: EvidenceCatalog;
   modernizationRisk: ModernizationAssessment["modernizationRisk"];
   dependencies: Dependency[];
   unknowns: SmeQuestion[];
+  smeValidationChecklist: SmeValidationChecklistItem[];
   outputSummary: string;
 }
 
@@ -50,14 +57,19 @@ export const assessModule = (moduleId: string): ModuleAssessmentToolResult => {
 
   return {
     assessmentId: assessment.assessmentId,
+    generatedAtUtc: assessment.generatedAtUtc,
     moduleId: assessment.moduleId,
     moduleName: assessment.moduleName,
     language: assessment.language,
     platform: assessment.platform,
     businessPurpose: assessment.businessPurpose,
+    confidence: assessment.confidence,
+    validationStatus: assessment.validationStatus,
+    evidenceCatalog: assessment.evidenceCatalog,
     modernizationRisk: assessment.modernizationRisk,
     dependencies: assessment.dependencies,
     unknowns: assessment.unknowns,
+    smeValidationChecklist: assessment.smeValidationChecklist,
     outputSummary:
       `Resolved ${assessment.moduleName} as a ${assessment.language} ${assessment.platform} module with ` +
       `${assessment.modernizationRisk.level} modernization risk.`

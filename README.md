@@ -34,11 +34,12 @@ The current MVP demonstrates one polished vertical slice:
 * COBOL module assessment
 * Business-purpose summary
 * Migration-risk analysis
-* Business-rule extraction
-* Dependency mapping
+* Business-rule extraction with confidence, validation status, and evidence refs
+* Dependency mapping with evidence refs
 * SME review questions
+* SME validation checklist
 * Recommended migration path
-* Jira-ready modernization work packages
+* Jira-ready modernization work packages with traceability
 * Real MCP-backed tool-call/audit summary
 * Clean adapter boundary for future Claude or backend integration
 
@@ -56,6 +57,18 @@ The Slack workflow calls the MCP-backed analysis client, which invokes these too
 
 The demo data is deterministic for reliability, but the MCP execution path and audit trace are real.
 
+Traceability Model
+
+Every high-impact decision object in the demo points back to an evidence catalog:
+
+* modernization risk includes evidence refs
+* each business rule includes evidence refs, confidence, and validation status
+* each work package includes evidence refs and validation status
+* SME validation checklist items include evidence refs
+* MCP trace entries include trace IDs, status, and evidence refs
+
+The fixture evidence uses `synthetic://` locations so reviewers can distinguish demo evidence from live enterprise artifacts.
+
 Demo Module
 
 The implemented demo module is:
@@ -70,6 +83,13 @@ Current Status
 Working TypeScript/Node MVP with local Slack Socket Mode integration and MCP-backed modernization tools.
 
 The MVP uses deterministic fixtures rather than live production mainframe or enterprise-system integrations. This keeps the demo reliable, reviewable, and safe while showing the intended agent workflow, Slack-native user experience, and MCP-backed tool boundary.
+
+See:
+
+* `docs/EVALUATION.md`
+* `docs/LIMITATIONS.md`
+* `docs/OBSERVABILITY.md`
+* `docs/adrs/`
 
 Architecture Principle
 
@@ -135,7 +155,7 @@ The Slack Socket Mode MVP has been tested locally with the slash command:
 
 /legacy assess claims-batch
 
-The command returns a Slack-native modernization assessment for CLAIMS-BATCH, including risk, business rules, critical dependencies, SME questions, recommended migration path, Jira-ready work packages, and a live MCP tool-call audit summary.
+The command returns a Slack-native modernization assessment for CLAIMS-BATCH, including risk, confidence, validation status, business rules, critical dependencies, SME validation checklist, recommended migration path, Jira-ready work packages, evidence refs, and a live MCP tool-call audit summary.
 
 The same command has been tested successfully in both Slack desktop and Slack mobile.
 
@@ -163,6 +183,8 @@ The MVP does not claim to perform full production-grade COBOL, Assembler, or Sma
 It does not connect to live enterprise systems.
 
 It does not create Jira tickets yet.
+
+It does not call Claude or any other model API.
 
 Those are future integrations. The current focus is the agentic workflow, Slack-native interaction model, MCP-backed tool boundary, modernization assessment shape, and clean adapter boundary.
 

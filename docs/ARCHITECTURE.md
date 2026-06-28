@@ -51,6 +51,9 @@ Implemented:
 - Deterministic CLAIMS-BATCH fixture
 - Slack Block Kit renderer
 - Plain-text renderer
+- Evidence catalog and evidence refs
+- Confidence and validation metadata
+- SME validation checklist
 - Unit tests
 - MCP client integration test
 - GitHub Actions CI
@@ -74,5 +77,7 @@ The MVP does not perform production-grade legacy-code analysis.
 The MVP does not connect to live customer systems.
 
 The MVP does not create tickets automatically.
+
+The MVP does not call Claude or any other model API.
 
 The goal is to show the agentic workflow, the Slack-native modernization operating surface, and the MCP-backed tool boundary.

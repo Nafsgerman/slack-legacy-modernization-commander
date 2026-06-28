@@ -25,7 +25,7 @@ type ToolResultWithSummary = {
 
 const serverPath = fileURLToPath(new URL("../mcp/server.ts", import.meta.url));
 
-const getTextPayload = (result: Awaited<ReturnType<Client["callTool"]>>): string => {
+export const getTextPayload = (result: Awaited<ReturnType<Client["callTool"]>>): string => {
   const content = result.content;
 
   if (!Array.isArray(content)) {
@@ -49,9 +49,19 @@ const getTextPayload = (result: Awaited<ReturnType<Client["callTool"]>>): string
   return textBlock.text;
 };
 
-const parseToolPayload = <T extends ToolResultWithSummary>(
+export const parseToolPayload = <T extends ToolResultWithSummary>(
   result: Awaited<ReturnType<Client["callTool"]>>
-): T => JSON.parse(getTextPayload(result)) as T;
+): T => {
+  try {
+    return JSON.parse(getTextPayload(result)) as T;
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error("MCP tool result text payload was not valid JSON.");
+    }
+
+    throw error;
+  }
+};
 
 export class McpLegacyAnalysisClient implements LegacyAnalysisClient {
   private async withClient<T>(
@@ -85,9 +95,10 @@ export class McpLegacyAnalysisClient implements LegacyAnalysisClient {
       });
       const moduleAssessment = parseToolPayload<ModuleAssessmentToolResult>(assessmentResult);
       trace.push({
-        tool: "mcp.legacy.assess_module",
+        tool: "legacy.assess_module",
         input: moduleId,
-        outputSummary: moduleAssessment.outputSummary
+        outputSummary: moduleAssessment.outputSummary,
+        evidenceProduced: moduleAssessment.modernizationRisk.evidenceRefs
       });
 
       const rulesResult = await client.callTool({
@@ -96,9 +107,10 @@ export class McpLegacyAnalysisClient implements LegacyAnalysisClient {
       });
       const ruleReport = parseToolPayload<RuleExtractionToolResult>(rulesResult);
       trace.push({
-        tool: "mcp.legacy.extract_rules",
+        tool: "legacy.extract_rules",
         input: moduleAssessment.moduleName,
-        outputSummary: ruleReport.outputSummary
+        outputSummary: ruleReport.outputSummary,
+        evidenceProduced: [...new Set(ruleReport.rules.flatMap((rule) => rule.evidenceRefs))]
       });
 
       const planResult = await client.callTool({
@@ -107,24 +119,32 @@ export class McpLegacyAnalysisClient implements LegacyAnalysisClient {
       });
       const plan = parseToolPayload<ModernizationPlanToolResult>(planResult);
       trace.push({
-        tool: "mcp.legacy.create_plan",
+        tool: "legacy.create_plan",
         input: moduleAssessment.moduleName,
-        outputSummary: plan.outputSummary
+        outputSummary: plan.outputSummary,
+        evidenceProduced: [
+          ...new Set(plan.workPackages.flatMap((workPackage) => workPackage.evidenceRefs))
+        ]
       });
 
       return {
         assessmentId: moduleAssessment.assessmentId,
+        generatedAtUtc: moduleAssessment.generatedAtUtc,
         moduleId: moduleAssessment.moduleId,
         moduleName: moduleAssessment.moduleName,
         language: moduleAssessment.language,
         platform: moduleAssessment.platform,
         businessPurpose: moduleAssessment.businessPurpose,
+        evidenceCatalog: moduleAssessment.evidenceCatalog,
+        confidence: moduleAssessment.confidence,
+        validationStatus: moduleAssessment.validationStatus,
         modernizationRisk: moduleAssessment.modernizationRisk,
         extractedBusinessRules: ruleReport.rules,
         dependencies: moduleAssessment.dependencies,
         unknowns: moduleAssessment.unknowns,
         recommendedMigrationPath: plan.migrationPath,
         jiraReadyWorkPackages: plan.workPackages,
+        smeValidationChecklist: moduleAssessment.smeValidationChecklist,
         toolTrace: trace
       };
     });

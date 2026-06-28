@@ -26,12 +26,14 @@ The assessment includes:
 - Platform
 - Business purpose
 - Modernization risk
-- Extracted business rules
-- Critical dependencies
+- Evidence catalog
+- Extracted business rules with confidence, validation status, and evidence refs
+- Critical dependencies with evidence refs
 - SME questions
+- SME validation checklist
 - Recommended migration path
-- Jira-ready work packages
-- Tool-call/audit summary
+- Jira-ready work packages with evidence refs
+- Tool-call/audit summary with MCP trace IDs
 
 ## Adapter Boundary
 
@@ -43,7 +45,7 @@ The domain layer defines a future-facing adapter shape:
       createModernizationPlan(moduleId: string): Promise<ModernizationPlan>;
     }
 
-The MVP uses deterministic fixtures. A production version could connect this boundary to Claude, a code-analysis backend, Jira, source control, dependency maps, or enterprise knowledge systems.
+The MVP uses deterministic fixtures and does not call Claude or any other model API. A production version could connect this boundary to Claude, a code-analysis backend, Jira, source control, dependency maps, or enterprise knowledge systems.
 
 ## Design Principle
 

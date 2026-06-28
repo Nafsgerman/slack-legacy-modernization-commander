@@ -8,13 +8,19 @@
     "demo": "node --experimental-strip-types src/demo/run-demo.ts",
     "slack:dev": "node --experimental-strip-types src/app/slack-app.ts",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
-    "mcp:server": "node --experimental-strip-types src/mcp/server.ts"
+    "mcp:server": "node --experimental-strip-types src/mcp/server.ts",
+    "typecheck": "tsc --noEmit",
+    "ci": "npm run typecheck && npm test"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@slack/bolt": "^4.4.0",
     "dotenv": "^17.2.3",
     "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=22.6.0"
