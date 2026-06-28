@@ -21,12 +21,12 @@ Platform: z/OS batch
 Assessment: LMC-CLAIMS-BATCH-2026-0001
 Generated UTC: 2026-01-15T12:00:00.000Z
 Overall confidence: medium
-Validation status: sme_required
+Validation status: SME review required
 
 Business purpose:
 Nightly claims adjudication batch that validates submitted insurance claims, applies eligibility and policy rules, calculates payable amounts, and produces downstream payment and exception files.
 
-Modernization risk: HIGH (medium, sme_required)
+Modernization risk: HIGH (medium, SME review required)
 Evidence: EV-001 Coverage-period branch, EV-002 High-value review branch, EV-003 Prior-claims lookup, EV-004 Exception file write, EV-005 Payment outbound contract, EV-006 CA7 nightly batch window, EV-007 Claims Operations validation gap
 The module sits on the critical payment path, mixes business rules with file and database access, and has several unresolved SME questions before safe migration.
 
@@ -43,7 +43,7 @@ Extracted business rules:
    Evidence: EV-001 Coverage-period branch
    Claims are eligible for automated processing only when the service date falls within the active policy coverage period.
 2. BR-002: High-value claim review
-   Validation status: sme_required
+   Validation status: SME review required
    Evidence: EV-002 High-value review branch, EV-007 Claims Operations validation gap
    Claims above the configured high-value threshold are routed to manual review instead of straight-through payment.
 3. BR-003: Duplicate claim suppression
@@ -51,7 +51,7 @@ Extracted business rules:
    Evidence: EV-003 Prior-claims lookup
    Claims with matching member, provider, service date, and procedure code are flagged as possible duplicates.
 4. BR-004: Exception file generation
-   Validation status: sme_required
+   Validation status: SME review required
    Evidence: EV-004 Exception file write, EV-007 Claims Operations validation gap
    Rejected or incomplete claims are written to an exception file consumed by the operations team the next morning.
 
@@ -84,19 +84,19 @@ Recommended migration path:
 Work packages prepared for future ticket creation:
 1. LMC-101 [P0] Create golden test dataset for CLAIMS-BATCH
    Owner role: QA Lead
-   Validation status: sme_required
+   Validation status: SME review required
    Evidence: EV-001, EV-002, EV-003, EV-004
 2. LMC-102 [P0] Validate extracted claims business rules with SMEs
    Owner role: Business Analyst
-   Validation status: sme_required
+   Validation status: SME review required
    Evidence: EV-001, EV-002, EV-003, EV-004, EV-007
 3. LMC-103 [P1] Map CLAIMS-BATCH dependencies and file contracts
    Owner role: Solution Architect
-   Validation status: sme_required
+   Validation status: SME review required
    Evidence: EV-003, EV-005, EV-006
 4. LMC-104 [P1] Design strangler migration plan for claims adjudication
    Owner role: Modernization Architect
-   Validation status: sme_required
+   Validation status: SME review required
    Evidence: EV-005, EV-006, EV-007
 
 SME validation checklist:
