@@ -34,13 +34,14 @@ const formatEvidenceRefs = (assessment: ModernizationAssessment, refs: string[])
     .join(", ");
 };
 
-const formatValidationStatus = (status: ValidationStatus): string => {
-  if (status === "sme_required") {
-    return "SME review required";
-  }
-
-  return status;
+const VALIDATION_LABELS: Record<ValidationStatus, string> = {
+  machine_inferred: "Machine inferred",
+  sme_required: "SME review required",
+  sme_validated: "SME validated",
+  rejected: "Rejected"
 };
+
+const formatValidationStatus = (status: ValidationStatus): string => VALIDATION_LABELS[status];
 
 const formatTraceEvidence = (assessment: ModernizationAssessment, refs?: string[]): string =>
   refs && refs.length > 0 ? ` [evidence: ${formatEvidenceRefs(assessment, refs)}]` : "";

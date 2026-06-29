@@ -4,12 +4,12 @@ import { App } from "@slack/bolt";
 import {
   legacyAssessmentActionIds,
   renderModernizationAssessmentBlocks,
-  renderModernizationAssessmentText,
   renderMcpTraceResponse,
   renderMcpTraceResponseBlocks,
   renderTicketDraftResponse,
   renderTicketDraftResponseBlocks
 } from "./render.ts";
+import type { ModernizationAssessment } from "../domain/types.ts";
 import { runLegacyAssessmentWorkflow } from "../domain/orchestrator.ts";
 
 const requiredEnv = (name: string): string => {
@@ -32,6 +32,12 @@ const helpText = [
 const normalizeCommandText = (text: string | undefined): string =>
   text?.trim().toLowerCase().replace(/\s+/g, " ") ?? "";
 
+export const buildAssessmentResponse = (assessment: ModernizationAssessment) => ({
+  response_type: "in_channel" as const,
+  text: `Legacy modernization assessment for ${assessment.moduleName}`,
+  blocks: renderModernizationAssessmentBlocks(assessment)
+});
+
 export const createSlackApp = (): App => {
   const app = new App({
     token: requiredEnv("SLACK_BOT_TOKEN"),
@@ -42,21 +48,18 @@ export const createSlackApp = (): App => {
 
   const loadDemoAssessment = async () => runLegacyAssessmentWorkflow("claims-batch");
 
-  app.command("/legacy", async ({ command, ack, logger }) => {
+  app.command("/legacy", async ({ command, ack, respond, logger }) => {
+    await ack();
     const normalizedText = normalizeCommandText(command.text);
 
     if (normalizedText === "assess claims-batch" || normalizedText === "demo") {
-      const assessment = await runLegacyAssessmentWorkflow("claims-batch");
-      await ack({
-        response_type: "ephemeral",
-        text: renderModernizationAssessmentText(assessment),
-        blocks: renderModernizationAssessmentBlocks(assessment)
-      });
+      const assessment = await loadDemoAssessment();
+      await respond(buildAssessmentResponse(assessment));
       return;
     }
 
     logger.info(`Unhandled /legacy command text: "${command.text}"`);
-    await ack({
+    await respond({
       response_type: "ephemeral",
       text: helpText,
       blocks: [
@@ -71,13 +74,16 @@ export const createSlackApp = (): App => {
     });
   });
 
+  // SME decision buttons mutate the original card in place via the action's
+  // response_url (replace_original). Reliable for both ephemeral and in_channel
+  // response_url messages; no chat.update / channel+ts plumbing required.
   app.action(legacyAssessmentActionIds.markSmeReviewed, async ({ ack, respond }) => {
     await ack();
     const assessment = await loadDemoAssessment();
     await respond({
-      response_type: "ephemeral",
+      response_type: "in_channel",
       replace_original: true,
-      text: `${assessment.moduleName} SME review marked complete for this demo session.`,
+      text: `${assessment.moduleName}: SME review marked complete for this demo session. No persistent enterprise state changed.`,
       blocks: renderModernizationAssessmentBlocks(assessment, {
         demoWorkflowStatus: "sme_reviewed"
       })
@@ -88,15 +94,16 @@ export const createSlackApp = (): App => {
     await ack();
     const assessment = await loadDemoAssessment();
     await respond({
-      response_type: "ephemeral",
+      response_type: "in_channel",
       replace_original: true,
-      text: `${assessment.moduleName} SME follow-up requested for this demo session.`,
+      text: `${assessment.moduleName}: SME follow-up requested for this demo session. No persistent enterprise state changed.`,
       blocks: renderModernizationAssessmentBlocks(assessment, {
         demoWorkflowStatus: "sme_followup_required"
       })
     });
   });
 
+  // Additive info actions: reveal a draft / trace without replacing the card.
   app.action(legacyAssessmentActionIds.prepareTicketDraft, async ({ ack, respond }) => {
     await ack();
     const assessment = await loadDemoAssessment();
