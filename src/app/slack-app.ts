@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { fileURLToPath } from "node:url";
 import { App } from "@slack/bolt";
+import type { BlockAction } from "@slack/bolt";
 import {
   legacyAssessmentActionIds,
   renderModernizationAssessmentBlocks,
@@ -32,10 +33,16 @@ const helpText = [
 const normalizeCommandText = (text: string | undefined): string =>
   text?.trim().toLowerCase().replace(/\s+/g, " ") ?? "";
 
-export const buildAssessmentResponse = (assessment: ModernizationAssessment) => ({
-  response_type: "in_channel" as const,
+// Card body only. Posted via chat.postMessage so it is bot-owned and can be
+// mutated in place with chat.update from the SME decision buttons.
+export const buildAssessmentBlocks = (assessment: ModernizationAssessment) => ({
   text: `Legacy modernization assessment for ${assessment.moduleName}`,
   blocks: renderModernizationAssessmentBlocks(assessment)
+});
+
+const resolveCardTarget = (body: BlockAction): { channel?: string; ts?: string } => ({
+  channel: body.channel?.id,
+  ts: body.message?.ts
 });
 
 export const createSlackApp = (): App => {
@@ -48,13 +55,16 @@ export const createSlackApp = (): App => {
 
   const loadDemoAssessment = async () => runLegacyAssessmentWorkflow("claims-batch");
 
-  app.command("/legacy", async ({ command, ack, respond, logger }) => {
+  app.command("/legacy", async ({ command, ack, respond, client, logger }) => {
     await ack();
     const normalizedText = normalizeCommandText(command.text);
 
     if (normalizedText === "assess claims-batch" || normalizedText === "demo") {
       const assessment = await loadDemoAssessment();
-      await respond(buildAssessmentResponse(assessment));
+      await client.chat.postMessage({
+        channel: command.channel_id,
+        ...buildAssessmentBlocks(assessment)
+      });
       return;
     }
 
@@ -62,44 +72,35 @@ export const createSlackApp = (): App => {
     await respond({
       response_type: "ephemeral",
       text: helpText,
-      blocks: [
-        {
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: helpText
-          }
-        }
-      ]
+      blocks: [{ type: "section", text: { type: "mrkdwn", text: helpText } }]
     });
   });
 
-  // SME decision buttons mutate the original card in place via the action's
-  // response_url (replace_original). Reliable for both ephemeral and in_channel
-  // response_url messages; no chat.update / channel+ts plumbing required.
-  app.action(legacyAssessmentActionIds.markSmeReviewed, async ({ ack, respond }) => {
+  // SME decision buttons mutate the bot-owned card in place via chat.update.
+  // Deterministic: no response_url / replace_original edge cases.
+  app.action(legacyAssessmentActionIds.markSmeReviewed, async ({ ack, body, client }) => {
     await ack();
+    const { channel, ts } = resolveCardTarget(body as BlockAction);
+    if (!channel || !ts) return;
     const assessment = await loadDemoAssessment();
-    await respond({
-      response_type: "in_channel",
-      replace_original: true,
+    await client.chat.update({
+      channel,
+      ts,
       text: `${assessment.moduleName}: SME review marked complete for this demo session. No persistent enterprise state changed.`,
-      blocks: renderModernizationAssessmentBlocks(assessment, {
-        demoWorkflowStatus: "sme_reviewed"
-      })
+      blocks: renderModernizationAssessmentBlocks(assessment, { demoWorkflowStatus: "sme_reviewed" })
     });
   });
 
-  app.action(legacyAssessmentActionIds.needsSmeFollowUp, async ({ ack, respond }) => {
+  app.action(legacyAssessmentActionIds.needsSmeFollowUp, async ({ ack, body, client }) => {
     await ack();
+    const { channel, ts } = resolveCardTarget(body as BlockAction);
+    if (!channel || !ts) return;
     const assessment = await loadDemoAssessment();
-    await respond({
-      response_type: "in_channel",
-      replace_original: true,
+    await client.chat.update({
+      channel,
+      ts,
       text: `${assessment.moduleName}: SME follow-up requested for this demo session. No persistent enterprise state changed.`,
-      blocks: renderModernizationAssessmentBlocks(assessment, {
-        demoWorkflowStatus: "sme_followup_required"
-      })
+      blocks: renderModernizationAssessmentBlocks(assessment, { demoWorkflowStatus: "sme_followup_required" })
     });
   });
 
