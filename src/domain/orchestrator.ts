@@ -13,20 +13,7 @@ class DeterministicLegacyAnalysisClient implements LegacyAnalysisClient {
       throw new Error(`Unknown demo module: ${moduleId}`);
     }
 
-    return {
-      ...claimsBatchAssessment,
-      toolTrace: [
-        {
-          tool: "legacy.assess_module",
-          input: moduleId,
-          outputSummary:
-            "Returned deterministic fixture assessment for local tests and offline development.",
-          evidenceProduced: claimsBatchAssessment.evidenceCatalog.evidence.map(
-            (evidence) => evidence.id
-          )
-        }
-      ]
-    };
+    return claimsBatchAssessment;
   }
 
   async extractRules(moduleId: string): Promise<BusinessRuleReport> {
@@ -53,5 +40,5 @@ export const deterministicLegacyAnalysisClient = new DeterministicLegacyAnalysis
 
 export const runLegacyAssessmentWorkflow = async (
   moduleId: string,
-  client: LegacyAnalysisClient = mcpLegacyAnalysisClient
+  client: LegacyAnalysisClient = deterministicLegacyAnalysisClient
 ): Promise<ModernizationAssessment> => client.assessModule(moduleId);

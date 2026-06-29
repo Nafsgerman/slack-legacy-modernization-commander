@@ -1,169 +1,106 @@
-import "dotenv/config";
-import { fileURLToPath } from "node:url";
-import { App } from "@slack/bolt";
-import type { BlockAction } from "@slack/bolt";
-import {
-  legacyAssessmentActionIds,
-  renderModernizationAssessmentBlocks,
-  renderMcpTraceResponse,
-  renderMcpTraceResponseBlocks,
-  renderTicketDraftResponse,
-  renderTicketDraftResponseBlocks
-} from "./render.ts";
-import type { ModernizationAssessment } from "../domain/types.ts";
-import { runLegacyAssessmentWorkflow } from "../domain/orchestrator.ts";
-import { applyValidationDecision } from "../domain/validation-decision.ts";
+export type RiskLevel = "low" | "medium" | "high" | "critical";
+export type Confidence = "low" | "medium" | "high";
+export type WorkPackagePriority = "p0" | "p1" | "p2";
+export type ValidationStatus = "unverified" | "machine_inferred" | "sme_validated";
 
-const requiredEnv = (name: string): string => {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
-};
+export interface EvidenceRef {
+  artifactId: string;
+  startLine: number;
+  endLine: number;
+  excerpt?: string; // set by application code only, never trusted from model
+}
 
-const helpText = [
-  "*Legacy Modernization Commander*",
-  "",
-  "Run the demo modernization assessment:",
-  "`/legacy assess claims-batch`",
-  "",
-  "Current demo: COBOL claims batch modernization assessment with business rules, dependencies, SME questions, migration path, ticket-draft work packages, and MCP trace visibility."
-].join("\n");
+export interface EvidenceCatalog {
+  refs: EvidenceRef[];
+  coverageLineCount: number;
+  verifiedCount: number;
+  unverifiedCount: number;
+}
 
-const normalizeCommandText = (text: string | undefined): string =>
-  text?.trim().toLowerCase().replace(/\s+/g, " ") ?? "";
+export interface ToolTraceEntry {
+  tool: string;
+  input: string;
+  outputSummary: string;
+}
 
-// Card body only. Posted via chat.postMessage so it is bot-owned and can be
-// mutated in place with chat.update from the SME decision buttons.
-export const buildAssessmentBlocks = (assessment: ModernizationAssessment) => ({
-  text: `Legacy modernization assessment for ${assessment.moduleName}`,
-  blocks: renderModernizationAssessmentBlocks(assessment)
-});
+export interface BusinessRule {
+  id: string;
+  title: string;
+  description: string;
+  sourceEvidence: string;
+  confidence: Confidence;
+  validationStatus: ValidationStatus;
+  evidenceRefs: EvidenceRef[];
+}
 
-const resolveCardTarget = (body: BlockAction): { channel?: string; ts?: string } => ({
-  channel: body.channel?.id,
-  ts: body.message?.ts
-});
+export interface Dependency {
+  name: string;
+  type: "database" | "file" | "scheduler" | "api" | "team" | "platform";
+  modernizationConcern: string;
+  validationStatus: ValidationStatus;
+  evidenceRefs: EvidenceRef[];
+}
 
-const isNotInChannel = (error: unknown): boolean =>
-  typeof error === "object" &&
-  error !== null &&
-  (error as { data?: { error?: string } }).data?.error === "not_in_channel";
+export interface SmeQuestion {
+  id: string;
+  question: string;
+  ownerRole: string;
+  reason: string;
+  validationStatus: ValidationStatus;
+  evidenceRefs: EvidenceRef[];
+}
 
-export const createSlackApp = (): App => {
-  const app = new App({
-    token: requiredEnv("SLACK_BOT_TOKEN"),
-    appToken: requiredEnv("SLACK_APP_TOKEN"),
-    signingSecret: requiredEnv("SLACK_SIGNING_SECRET"),
-    socketMode: true
-  });
+export interface WorkPackage {
+  key: string;
+  title: string;
+  priority: WorkPackagePriority;
+  ownerRole: string;
+  description: string;
+  acceptanceCriteria: string[];
+  validationStatus: ValidationStatus;
+  evidenceRefs: EvidenceRef[];
+}
 
-  const loadDemoAssessment = async () => runLegacyAssessmentWorkflow("claims-batch");
+export interface ModernizationAssessment {
+  assessmentId: string;
+  moduleId: string;
+  moduleName: string;
+  language: string;
+  platform: string;
+  businessPurpose: string;
+  modernizationRisk: {
+    level: RiskLevel;
+    rationale: string;
+    drivers: string[];
+  };
+  extractedBusinessRules: BusinessRule[];
+  dependencies: Dependency[];
+  unknowns: SmeQuestion[];
+  recommendedMigrationPath: string[];
+  jiraReadyWorkPackages: WorkPackage[];
+  toolTrace: ToolTraceEntry[];
+  evidenceCatalog: EvidenceCatalog;
+}
 
-  app.command("/legacy", async ({ command, ack, respond, client, logger }) => {
-    await ack();
-    const normalizedText = normalizeCommandText(command.text);
+export interface BusinessRuleReport {
+  moduleId: string;
+  rules: BusinessRule[];
+}
 
-    if (normalizedText === "assess claims-batch" || normalizedText === "demo") {
-      const assessment = await loadDemoAssessment();
-      try {
-        await client.chat.postMessage({
-          channel: command.channel_id,
-          ...buildAssessmentBlocks(assessment)
-        });
-      } catch (error) {
-        if (isNotInChannel(error)) {
-          await respond({
-            response_type: "ephemeral",
-            text:
-              "I need to be a member of this channel to post the assessment card. " +
-              "Add me via the channel name → Integrations → Add apps, then re-run `/legacy assess claims-batch`."
-          });
-          return;
-        }
-        throw error;
-      }
-      return;
-    }
+export interface ModernizationPlan {
+  moduleId: string;
+  migrationPath: string[];
+  workPackages: WorkPackage[];
+}
 
-    logger.info(`Unhandled /legacy command text: "${command.text}"`);
-    await respond({
-      response_type: "ephemeral",
-      text: helpText,
-      blocks: [{ type: "section", text: { type: "mrkdwn", text: helpText } }]
-    });
-  });
+export interface LegacyAnalysisClient {
+  assessModule(moduleId: string): Promise<ModernizationAssessment>;
+  extractRules(moduleId: string): Promise<BusinessRuleReport>;
+  createModernizationPlan(moduleId: string): Promise<ModernizationPlan>;
+}
 
-  // SME decision buttons mutate the bot-owned card in place via chat.update.
-  // The whole assessment is re-validated through applyValidationDecision, so
-  // every rule / work package / checklist status flips visibly — not just the header.
-  app.action(legacyAssessmentActionIds.markSmeReviewed, async ({ ack, body, client }) => {
-    await ack();
-    const { channel, ts } = resolveCardTarget(body as BlockAction);
-    if (!channel || !ts) return;
-    const assessment = await loadDemoAssessment();
-    const reviewed = applyValidationDecision(assessment, "sme_validated");
-    await client.chat.update({
-      channel,
-      ts,
-      text: `${assessment.moduleName}: SME review marked complete for this demo session. No persistent enterprise state changed.`,
-      blocks: renderModernizationAssessmentBlocks(reviewed, { demoWorkflowStatus: "sme_reviewed" })
-    });
-  });
-
-  app.action(legacyAssessmentActionIds.needsSmeFollowUp, async ({ ack, body, client }) => {
-    await ack();
-    const { channel, ts } = resolveCardTarget(body as BlockAction);
-    if (!channel || !ts) return;
-    const assessment = await loadDemoAssessment();
-    const flagged = applyValidationDecision(assessment, "sme_required");
-    await client.chat.update({
-      channel,
-      ts,
-      text: `${assessment.moduleName}: SME follow-up requested for this demo session. No persistent enterprise state changed.`,
-      blocks: renderModernizationAssessmentBlocks(flagged, { demoWorkflowStatus: "sme_followup_required" })
-    });
-  });
-
-  // Additive info actions: reveal a draft / trace without replacing the card.
-  app.action(legacyAssessmentActionIds.prepareTicketDraft, async ({ ack, respond }) => {
-    await ack();
-    const assessment = await loadDemoAssessment();
-    await respond({
-      response_type: "ephemeral",
-      replace_original: false,
-      text: renderTicketDraftResponse(assessment),
-      blocks: renderTicketDraftResponseBlocks(assessment)
-    });
-  });
-
-  app.action(legacyAssessmentActionIds.showMcpTrace, async ({ ack, respond }) => {
-    await ack();
-    const assessment = await loadDemoAssessment();
-    await respond({
-      response_type: "ephemeral",
-      replace_original: false,
-      text: renderMcpTraceResponse(assessment),
-      blocks: renderMcpTraceResponseBlocks(assessment)
-    });
-  });
-
-  app.error(async (error) => {
-    console.error("Slack app error", error);
-  });
-
-  return app;
-};
-
-export const startSlackApp = async (): Promise<void> => {
-  const app = createSlackApp();
-  await app.start();
-  console.log("Legacy Modernization Commander is running in Socket Mode.");
-};
-
-const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
-
-if (isMainModule) {
-  await startSlackApp();
+// Source artifact for citation verification
+export interface SourceArtifact {
+  artifactId: string;
+  lines: string[]; // 1-indexed access via lines[lineNum - 1]
 }

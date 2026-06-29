@@ -2,93 +2,73 @@ import type { ModernizationAssessment } from "../domain/types.ts";
 
 export const claimsBatchAssessment: ModernizationAssessment = {
   assessmentId: "LMC-CLAIMS-BATCH-2026-0001",
-  generatedAtUtc: "2026-01-15T12:00:00.000Z",
+  generatedAtUtc: "2026-06-29T00:00:00.000Z",
   moduleId: "claims-batch",
   moduleName: "CLAIMS-BATCH",
   language: "COBOL",
   platform: "z/OS batch",
+  confidence: "high",
+  validationStatus: "sme_required",
   businessPurpose:
     "Nightly claims adjudication batch that validates submitted insurance claims, applies eligibility and policy rules, calculates payable amounts, and produces downstream payment and exception files.",
-  confidence: "medium",
-  validationStatus: "sme_required",
   evidenceCatalog: {
     assessmentId: "LMC-CLAIMS-BATCH-2026-0001",
     evidence: [
       {
         id: "EV-001",
         sourceType: "code",
-        sourceName: "Coverage-period branch",
-        locator: {
-          file: "fixtures/claims-batch.cobol",
-          paragraph: "ELIGIBILITY-CHECK"
-        },
-        excerpt:
-          "Synthetic fixture notes a service-date comparison against POLICY-START-DATE and POLICY-END-DATE."
+        sourceName: "claims-batch.cbl",
+        locator: { file: "claims-batch.cbl", paragraph: "2100-CHECK-ELIGIBILITY", lineStart: 103, lineEnd: 108 },
+        excerpt: "IF SERVICE-DATE < POLICY-START-DATE OR SERVICE-DATE > POLICY-END-DATE"
       },
       {
         id: "EV-002",
         sourceType: "code",
-        sourceName: "High-value review branch",
-        locator: {
-          file: "fixtures/claims-batch.cobol",
-          paragraph: "REVIEW-ROUTING"
-        },
-        excerpt:
-          "Synthetic fixture notes an amount threshold check before straight-through payment output."
+        sourceName: "claims-batch.cbl",
+        locator: { file: "claims-batch.cbl", paragraph: "2300-ROUTE-OR-REJECT", lineStart: 124, lineEnd: 133 },
+        excerpt: "IF CLAIM-AMOUNT > WS-HIGH-VALUE-THRESHOLD"
       },
       {
         id: "EV-003",
-        sourceType: "fixture",
-        sourceName: "Prior-claims lookup",
-        locator: {
-          file: "fixtures/claims-batch.dependencies.json",
-          paragraph: "DB2.CLAIMS_HISTORY"
-        },
-        excerpt:
-          "Dependency fixture records a composite lookup by member, provider, service date, and procedure code."
+        sourceType: "code",
+        sourceName: "claims-batch.cbl",
+        locator: { file: "claims-batch.cbl", paragraph: "2200-CHECK-DUPLICATE", lineStart: 111, lineEnd: 122 },
+        excerpt: "SELECT COUNT(*) INTO :WS-DB2-CLAIM-COUNT FROM DB2.CLAIMS_HISTORY WHERE MEMBER_ID = :MEMBER-ID AND PROVIDER_ID = :PROVIDER-ID AND SERVICE_DATE = :SERVICE-DATE AND PROC_CODE = :PROCEDURE-CODE"
       },
       {
         id: "EV-004",
         sourceType: "code",
-        sourceName: "Exception file write",
-        locator: {
-          file: "fixtures/claims-batch.cobol",
-          paragraph: "CLAIMS-EXCEPTION-FILE"
-        },
-        excerpt:
-          "Synthetic fixture notes rejected or incomplete claims written to CLAIMS-EXCEPTION-FILE."
+        sourceName: "claims-batch.cbl",
+        locator: { file: "claims-batch.cbl", paragraph: "8000-WRITE-EXCEPTION", lineStart: 137, lineEnd: 141 },
+        excerpt: "WRITE CLAIMS-EXCEPTION-RECORD"
       },
       {
         id: "EV-005",
-        sourceType: "file_contract",
-        sourceName: "Payment outbound contract",
-        locator: {
-          file: "fixtures/payment-outbound.layout"
-        },
-        excerpt:
-          "Dependency fixture marks the payment output as a stable downstream file contract."
+        sourceType: "code",
+        sourceName: "claims-batch.cbl",
+        locator: { file: "claims-batch.cbl", paragraph: "2200-CHECK-DUPLICATE", lineStart: 113, lineEnd: 120 },
+        excerpt: "EXEC SQL SELECT COUNT(*) ... FROM DB2.CLAIMS_HISTORY END-EXEC"
       },
       {
         id: "EV-006",
-        sourceType: "fixture",
-        sourceName: "CA7 nightly batch window",
-        locator: {
-          file: "fixtures/claims-batch.schedule.json",
-          paragraph: "CA7 nightly schedule"
-        },
-        excerpt:
-          "Schedule fixture records nightly schedule, completion-window, and restart concerns."
+        sourceType: "file_contract",
+        sourceName: "claims-batch.cbl",
+        locator: { file: "claims-batch.cbl", lineStart: 17, lineEnd: 24 },
+        excerpt: "SELECT POLICY-MASTER-FILE ASSIGN TO 'POLICY.MASTER' ORGANIZATION IS SEQUENTIAL"
       },
       {
         id: "EV-007",
-        sourceType: "sme_note",
-        sourceName: "Claims Operations validation gap",
-        locator: {
-          file: "fixtures/claims-operations-validation-notes.md",
-          paragraph: "Open validation questions"
-        },
-        excerpt:
-          "Fixture notes that Claims Operations must validate thresholds and exception handling before implementation."
+        sourceType: "file_contract",
+        sourceName: "claims-batch.cbl",
+        locator: { file: "claims-batch.cbl", paragraph: "7000-WRITE-PAYMENT", lineStart: 143, lineEnd: 148 },
+        excerpt: "WRITE PAYMENT-OUTBOUND-RECORD"
+      },
+      {
+        id: "EV-008",
+        sourceType: "code",
+        sourceName: "claims-batch.cbl",
+        locator: { file: "claims-batch.cbl", lineStart: 70, lineEnd: 70 },
+        excerpt: "WS-HIGH-VALUE-THRESHOLD PIC 9(9)V99 VALUE 50000.00"
       }
     ]
   },
@@ -103,9 +83,9 @@ export const claimsBatchAssessment: ModernizationAssessment = {
       "Unclear ownership of exception handling rules",
       "Downstream payment file contract must remain stable during migration"
     ],
-    confidence: "medium",
-    evidenceRefs: ["EV-001", "EV-002", "EV-003", "EV-004", "EV-005", "EV-006", "EV-007"],
-    validationStatus: "sme_required"
+    confidence: "high",
+    evidenceRefs: ["EV-001", "EV-002", "EV-007"],
+    validationStatus: "machine_inferred"
   },
   extractedBusinessRules: [
     {
@@ -122,9 +102,9 @@ export const claimsBatchAssessment: ModernizationAssessment = {
       title: "High-value claim review",
       description:
         "Claims above the configured high-value threshold are routed to manual review instead of straight-through payment.",
-      evidenceRefs: ["EV-002", "EV-007"],
+      evidenceRefs: ["EV-002", "EV-008"],
       confidence: "medium",
-      validationStatus: "sme_required"
+      validationStatus: "machine_inferred"
     },
     {
       id: "BR-003",
@@ -140,9 +120,9 @@ export const claimsBatchAssessment: ModernizationAssessment = {
       title: "Exception file generation",
       description:
         "Rejected or incomplete claims are written to an exception file consumed by the operations team the next morning.",
-      evidenceRefs: ["EV-004", "EV-007"],
+      evidenceRefs: ["EV-004"],
       confidence: "high",
-      validationStatus: "sme_required"
+      validationStatus: "machine_inferred"
     }
   ],
   dependencies: [
@@ -151,35 +131,35 @@ export const claimsBatchAssessment: ModernizationAssessment = {
       type: "database",
       modernizationConcern:
         "Used for duplicate detection and prior claim lookup; migration requires read consistency and historical data access.",
-      evidenceRefs: ["EV-003"]
+      evidenceRefs: ["EV-005"]
     },
     {
       name: "POLICY-MASTER-FILE",
       type: "file",
       modernizationConcern:
         "Fixed-width input contract must be preserved or explicitly versioned for upstream policy administration systems.",
-      evidenceRefs: ["EV-001"]
+      evidenceRefs: ["EV-006"]
     },
     {
       name: "PAYMENT-OUTBOUND-FILE",
       type: "file",
       modernizationConcern:
         "Downstream payment system depends on current field order, encoding, and nightly delivery timing.",
-      evidenceRefs: ["EV-005"]
+      evidenceRefs: ["EV-007"]
     },
     {
       name: "CA7 nightly schedule",
       type: "scheduler",
       modernizationConcern:
         "Batch completion window and restart behavior must be mapped before cloud or service-based migration.",
-      evidenceRefs: ["EV-006"]
+      evidenceRefs: []
     },
     {
       name: "Claims Operations SME",
       type: "team",
       modernizationConcern:
         "Exception handling and manual review thresholds require business validation before implementation.",
-      evidenceRefs: ["EV-007"]
+      evidenceRefs: []
     }
   ],
   unknowns: [
@@ -240,7 +220,7 @@ export const claimsBatchAssessment: ModernizationAssessment = {
         "High-value review threshold is confirmed",
         "Exception handling ownership is documented"
       ],
-      evidenceRefs: ["EV-001", "EV-002", "EV-003", "EV-004", "EV-007"],
+      evidenceRefs: ["EV-002", "EV-008"],
       validationStatus: "sme_required"
     },
     {
@@ -255,7 +235,7 @@ export const claimsBatchAssessment: ModernizationAssessment = {
         "Downstream consumers are identified",
         "Batch restart and reconciliation behavior is captured"
       ],
-      evidenceRefs: ["EV-003", "EV-005", "EV-006"],
+      evidenceRefs: ["EV-006", "EV-007"],
       validationStatus: "sme_required"
     },
     {
@@ -270,45 +250,45 @@ export const claimsBatchAssessment: ModernizationAssessment = {
         "Parallel-run approach is documented",
         "Cutover and rollback criteria are defined"
       ],
-      evidenceRefs: ["EV-005", "EV-006", "EV-007"],
+      evidenceRefs: ["EV-007"],
       validationStatus: "sme_required"
     }
   ],
   smeValidationChecklist: [
     {
       id: "SME-001",
-      title: "Approve extracted business rules",
+      title: "Validate high-value claim threshold",
       ownerRole: "Claims Operations SME",
       status: "sme_required",
-      evidenceRefs: ["EV-001", "EV-002", "EV-003", "EV-004"],
+      evidenceRefs: ["EV-002", "EV-008"],
       checklist: [
-        "Confirm each rule is still active",
-        "Mark changed or retired rules",
-        "Approve golden-test expected outputs"
+        "Confirm current threshold value is $50,000",
+        "Confirm threshold has not changed operationally",
+        "Document approval or updated value"
       ]
     },
     {
       id: "SME-002",
-      title: "Validate payment and exception file contracts",
-      ownerRole: "Solution Architect",
+      title: "Confirm exception handling ownership",
+      ownerRole: "Claims Operations SME",
       status: "sme_required",
-      evidenceRefs: ["EV-004", "EV-005"],
+      evidenceRefs: ["EV-004"],
       checklist: [
-        "Identify downstream consumers",
-        "Confirm field order and encoding constraints",
-        "Define versioning path for future adapters"
+        "Identify team consuming the exception file",
+        "Confirm exception codes are still current",
+        "Document SLA for exception processing"
       ]
     },
     {
       id: "SME-003",
-      title: "Validate batch recovery behavior",
-      ownerRole: "Mainframe Batch Lead",
+      title: "Map downstream payment file consumers",
+      ownerRole: "Solution Architect",
       status: "sme_required",
-      evidenceRefs: ["EV-006"],
+      evidenceRefs: ["EV-007"],
       checklist: [
-        "Document current restart points",
-        "Confirm recovery behavior after partial output",
-        "Define cutover rollback criteria"
+        "Enumerate all systems reading PAYMENT-OUTBOUND-FILE",
+        "Confirm field layout contract",
+        "Assess impact of any layout change"
       ]
     }
   ],
@@ -316,20 +296,20 @@ export const claimsBatchAssessment: ModernizationAssessment = {
     {
       tool: "legacy.assess_module",
       input: "claims-batch",
-      outputSummary: "Resolved module CLAIMS-BATCH as COBOL z/OS nightly claims adjudication batch.",
-      evidenceProduced: ["EV-001", "EV-005", "EV-006"]
+      outputSummary: "assessed module risk.",
+      evidenceProduced: ["EV-001", "EV-002", "EV-003", "EV-004", "EV-005", "EV-006", "EV-007", "EV-008"]
     },
     {
       tool: "legacy.extract_rules",
       input: "CLAIMS-BATCH",
-      outputSummary: "Extracted four candidate business rules with medium-to-high confidence.",
+      outputSummary: "extracted business rules.",
       evidenceProduced: ["EV-001", "EV-002", "EV-003", "EV-004"]
     },
     {
       tool: "legacy.create_plan",
-      input: "CLAIMS-BATCH modernization assessment",
-      outputSummary: "Prepared four ticket-draft work packages for test, SME validation, dependency mapping, and migration design.",
-      evidenceProduced: ["EV-001", "EV-002", "EV-003", "EV-004", "EV-005", "EV-006", "EV-007"]
+      input: "CLAIMS-BATCH",
+      outputSummary: "prepared migration work packages.",
+      evidenceProduced: ["EV-006", "EV-007", "EV-008"]
     }
   ]
 };
