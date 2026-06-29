@@ -29,6 +29,7 @@ It returns a Slack-native decision brief for a synthetic COBOL claims adjudicati
 - Evidence references and evidence catalog
 - Validation statuses for modernization outputs
 - MCP tool trace rendered in plain text and Slack output
+- Slack Block Kit workflow actions: Mark reviewed, SME follow-up, Draft ticket, and Show trace
 - Tests for determinism, traceability invariants, MCP client behavior, Slack rendering, and unsupported-claim guardrails
 
 ### What Is Intentionally Deterministic
@@ -95,6 +96,7 @@ npm run demo
 - Evidence references and evidence catalog
 - Validation statuses
 - MCP tool trace rendered in output
+- Interactive Slack workflow actions for demo-scoped SME review, follow-up, ticket draft preview, and trace visibility
 - Tests for determinism, traceability invariants, and no fake claims
 
 ### Not Implemented
@@ -122,6 +124,8 @@ npm run demo
 ```
 
 The command returns a structured modernization assessment for a synthetic COBOL claims batch module.
+
+The Slack card includes workflow buttons for `Mark reviewed`, `SME follow-up`, `Draft ticket`, and `Show trace`. The SME buttons update the visible card state for the demo session only; they do not persist enterprise state or create external records.
 
 ## Why This Exists
 

@@ -5,9 +5,9 @@ import {
   renderModernizationAssessmentBlocks,
   renderModernizationAssessmentText,
   renderMcpTraceResponse,
-  renderSmeFollowUpResponse,
-  renderSmeReviewedResponse,
-  renderTicketDraftResponse
+  renderMcpTraceResponseBlocks,
+  renderTicketDraftResponse,
+  renderTicketDraftResponseBlocks
 } from "../src/app/render.ts";
 import {
   deterministicLegacyAnalysisClient,
@@ -122,41 +122,75 @@ test("renders decision-oriented Slack Block Kit sections", async () => {
 test("renders ticket draft action wording without claiming Jira creation", async () => {
   const assessment = await runLegacyAssessmentWorkflow("claims-batch");
   const ticketDraft = renderTicketDraftResponse(assessment);
+  const ticketDraftBlocks = renderTicketDraftResponseBlocks(assessment);
+  const serializedBlocks = JSON.stringify(ticketDraftBlocks);
 
   assert.match(ticketDraft, /draft/i);
   assert.match(ticketDraft, /No Jira ticket was created/i);
+  assert.match(serializedBlocks, /Ticket draft only/i);
+  assert.match(serializedBlocks, /No Jira ticket was created/i);
   assert.match(ticketDraft, /Validation status: SME review required/i);
   assert.doesNotMatch(ticketDraft, /sme_required/);
+  assert.doesNotMatch(serializedBlocks, /sme_required/);
   assert.doesNotMatch(ticketDraft, /^Created Jira ticket/im);
   assert.doesNotMatch(ticketDraft, /Jira ticket created successfully/i);
+  assert.doesNotMatch(serializedBlocks, /plain_text_input/);
 });
 
-test("renders SME action responses as demo-session state only", async () => {
+test("renders SME reviewed action as an updated card state", async () => {
   const assessment = await runLegacyAssessmentWorkflow("claims-batch");
-  const reviewed = renderSmeReviewedResponse(assessment);
-  const followUp = renderSmeFollowUpResponse(assessment);
+  const blocks = renderModernizationAssessmentBlocks(assessment, {
+    demoWorkflowStatus: "sme_reviewed"
+  });
+  const serialized = JSON.stringify(blocks);
 
-  assert.match(reviewed, /demo session only/i);
-  assert.match(reviewed, /No persistent enterprise state was changed/i);
-  assert.match(followUp, /SME follow-up required/i);
-  assert.match(followUp, /Validation remains SME review required/i);
-  assert.doesNotMatch(followUp, /sme_required/);
+  assert.match(serialized, /Validation status/);
+  assert.match(serialized, /SME reviewed for demo session/);
+  assert.match(serialized, /Demo workflow/);
+  assert.match(serialized, /SME review marked complete/);
+  assert.match(serialized, /No persistent enterprise state changed/);
+  assert.doesNotMatch(serialized, /sme_required/);
 });
 
-test("keeps MCP trace available through the Show trace action", async () => {
+test("renders SME follow-up action as an updated card state", async () => {
   const assessment = await runLegacyAssessmentWorkflow("claims-batch");
+  const blocks = renderModernizationAssessmentBlocks(assessment, {
+    demoWorkflowStatus: "sme_followup_required"
+  });
+  const serialized = JSON.stringify(blocks);
+
+  assert.match(serialized, /Validation status/);
+  assert.match(serialized, /SME review required/);
+  assert.match(serialized, /Demo workflow/);
+  assert.match(serialized, /SME follow-up requested/);
+  assert.match(serialized, /Review required before implementation planning/);
+  assert.doesNotMatch(serialized, /sme_required/);
+});
+
+test("keeps MCP trace available through the Show trace action as sorted Block Kit", async () => {
+  const assessment = await runLegacyAssessmentWorkflow("claims-batch");
+  assessment.toolTrace[0].evidenceProduced = ["EV-003", "EV-001", "EV-002"];
   const blocks = renderModernizationAssessmentBlocks(assessment);
   const traceResponse = renderMcpTraceResponse(assessment);
+  const traceBlocks = renderMcpTraceResponseBlocks(assessment);
   const serializedBlocks = JSON.stringify(blocks);
+  const serializedTraceBlocks = JSON.stringify(traceBlocks);
 
   assert.match(serializedBlocks, new RegExp(legacyAssessmentActionIds.showMcpTrace));
   assert.match(traceResponse, /legacy\.assess_module/);
   assert.match(traceResponse, /legacy\.extract_rules/);
   assert.match(traceResponse, /legacy\.create_plan/);
   assert.match(traceResponse, /assessed module risk\. Evidence: EV-/);
+  assert.match(serializedTraceBlocks, /legacy\.assess_module/);
   assert.match(traceResponse, /extracted business rules\. Evidence: EV-/);
   assert.match(traceResponse, /prepared migration work packages\. Evidence: EV-/);
+  assert.match(serializedTraceBlocks, /Evidence: EV-001, EV-002, EV-003/);
   assert.match(traceResponse, /No live mainframe, Jira, or external LLM was called\./);
+  assert.match(
+    serializedTraceBlocks,
+    /No live mainframe, Jira, or external LLM was called\./
+  );
+  assert.doesNotMatch(serializedTraceBlocks, /sme_required/);
   assert.doesNotMatch(traceResponse, /Resolved CLAIMS-BATCH as a COBOL z\/OS batch module/);
 });
 
@@ -164,12 +198,29 @@ test("rendered Slack output avoids fake production and vendor claims", async () 
   const assessment = await runLegacyAssessmentWorkflow("claims-batch");
   const rendered = [
     renderModernizationAssessmentText(assessment),
-    JSON.stringify(renderModernizationAssessmentBlocks(assessment))
+    JSON.stringify(renderModernizationAssessmentBlocks(assessment)),
+    JSON.stringify(
+      renderModernizationAssessmentBlocks(assessment, {
+        demoWorkflowStatus: "sme_reviewed"
+      })
+    ),
+    JSON.stringify(
+      renderModernizationAssessmentBlocks(assessment, {
+        demoWorkflowStatus: "sme_followup_required"
+      })
+    ),
+    renderTicketDraftResponse(assessment),
+    JSON.stringify(renderTicketDraftResponseBlocks(assessment)),
+    renderMcpTraceResponse(assessment),
+    JSON.stringify(renderMcpTraceResponseBlocks(assessment))
   ].join("\n");
 
   const forbiddenClaims = [
     /Jira tickets? (were )?created/i,
     /created Jira tickets?/i,
+    /Jira-ready/i,
+    /jiraReady/i,
+    /sme_required/i,
     /Claude analyzed/i,
     /connected to live production systems/i,
     /live production systems were connected/i,

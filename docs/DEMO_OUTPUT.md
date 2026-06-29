@@ -10,6 +10,15 @@ The exact Slack formatting is rendered through Block Kit in the running Slack ap
 
 The demo uses synthetic fixture data. It does not connect to a live mainframe, create Jira tickets, call Claude, or process customer data.
 
+The Slack card includes workflow actions:
+
+- Mark reviewed
+- SME follow-up
+- Draft ticket
+- Show trace
+
+`Mark reviewed` and `SME follow-up` update the original Slack assessment card in place for the current demo session. `Draft ticket` and `Show trace` remain compact ephemeral Block Kit responses.
+
 ## Representative Text Output
 
 ```text

@@ -1,6 +1,11 @@
 import type { KnownBlock } from "@slack/types";
 import type { ModernizationAssessment, ValidationStatus } from "../domain/types.ts";
 
+export type DemoWorkflowRenderState = {
+  demoWorkflowStatus?: "initial" | "sme_reviewed" | "sme_followup_required";
+  demoWorkflowNote?: string;
+};
+
 export const legacyAssessmentActionIds = {
   markSmeReviewed: "legacy_mark_sme_reviewed",
   needsSmeFollowUp: "legacy_needs_sme_follow_up",
@@ -41,7 +46,38 @@ const formatTraceEvidence = (assessment: ModernizationAssessment, refs?: string[
   refs && refs.length > 0 ? ` [evidence: ${formatEvidenceRefs(assessment, refs)}]` : "";
 
 const formatEvidenceIds = (refs?: string[]): string =>
-  refs && refs.length > 0 ? [...new Set(refs)].join(", ") : "none";
+  refs && refs.length > 0 ? [...new Set(refs)].sort().join(", ") : "none";
+
+const workflowLabels = (
+  defaultValidationStatus: ValidationStatus,
+  state?: DemoWorkflowRenderState
+): {
+  validationStatus: string;
+  demoWorkflow: string;
+  demoWorkflowNote?: string;
+} => {
+  if (state?.demoWorkflowStatus === "sme_reviewed") {
+    return {
+      validationStatus: "SME reviewed for demo session",
+      demoWorkflow: "SME review marked complete",
+      demoWorkflowNote: state.demoWorkflowNote ?? "No persistent enterprise state changed"
+    };
+  }
+
+  if (state?.demoWorkflowStatus === "sme_followup_required") {
+    return {
+      validationStatus: "SME review required",
+      demoWorkflow: "SME follow-up requested",
+      demoWorkflowNote: state.demoWorkflowNote ?? "Review required before implementation planning"
+    };
+  }
+
+  return {
+    validationStatus: formatValidationStatus(defaultValidationStatus),
+    demoWorkflow: "Awaiting SME action",
+    demoWorkflowNote: state?.demoWorkflowNote
+  };
+};
 
 const summarizeTraceAction = (tool: string): string => {
   if (tool === "legacy.assess_module") {
@@ -207,16 +243,6 @@ const renderAssessmentActions = (assessment: ModernizationAssessment): KnownBloc
   ]
 });
 
-export const renderSmeReviewedResponse = (assessment: ModernizationAssessment): string =>
-  `Marked ${assessment.moduleName} as SME reviewed for this demo session only. ` +
-  "No persistent enterprise state was changed.";
-
-export const renderSmeFollowUpResponse = (assessment: ModernizationAssessment): string =>
-  `SME follow-up required for ${assessment.moduleName}. ` +
-  `Validation remains ${formatValidationStatus(
-    assessment.validationStatus
-  )}; review is required before implementation planning.`;
-
 export const renderTicketDraftResponse = (assessment: ModernizationAssessment): string => {
   const [workPackage] = assessment.ticketDraftWorkPackages;
 
@@ -233,6 +259,31 @@ export const renderTicketDraftResponse = (assessment: ModernizationAssessment): 
   ].join("\n");
 };
 
+export const renderTicketDraftResponseBlocks = (assessment: ModernizationAssessment): KnownBlock[] => {
+  const [workPackage] = assessment.ticketDraftWorkPackages;
+
+  if (!workPackage) {
+    return [
+      mrkdwnSection(
+        `*Ticket draft only*\nNo Jira ticket was created.\nNo work package was available for ${assessment.moduleName}.`
+      )
+    ];
+  }
+
+  return [
+    mrkdwnSection(
+      [
+        `*Ticket draft only*`,
+        "No Jira ticket was created.",
+        `*${workPackage.key}* ${workPackage.title}`,
+        `Owner role: ${workPackage.ownerRole}`,
+        `Validation status: ${formatValidationStatus(workPackage.validationStatus)}`,
+        `Evidence: ${formatEvidenceRefs(assessment, workPackage.evidenceRefs)}`
+      ].join("\n")
+    )
+  ];
+};
+
 export const renderMcpTraceResponse = (assessment: ModernizationAssessment): string =>
   [
     `MCP trace for ${assessment.moduleName}:`,
@@ -246,14 +297,32 @@ export const renderMcpTraceResponse = (assessment: ModernizationAssessment): str
     "No live mainframe, Jira, or external LLM was called."
   ].join("\n");
 
+export const renderMcpTraceResponseBlocks = (assessment: ModernizationAssessment): KnownBlock[] => [
+  mrkdwnSection(
+    [
+      `*MCP trace for ${assessment.moduleName}*`,
+      ...assessment.toolTrace.map(
+        (trace) =>
+          `• *${trace.tool}*: ${summarizeTraceAction(trace.tool)}. Evidence: ${formatEvidenceIds(
+            trace.evidenceProduced
+          )}`
+      ),
+      "Trace source: deterministic local fixture through the MCP client/server path.",
+      "No live mainframe, Jira, or external LLM was called."
+    ].join("\n")
+  )
+];
+
 export const renderModernizationAssessmentBlocks = (
-  assessment: ModernizationAssessment
+  assessment: ModernizationAssessment,
+  state?: DemoWorkflowRenderState
 ): KnownBlock[] => {
   const topRules = assessment.extractedBusinessRules.slice(0, 3);
   const topDependencies = assessment.dependencies.slice(0, 3);
   const topChecklist = assessment.smeValidationChecklist.slice(0, 3);
   const nextMoves = assessment.recommendedMigrationPath.slice(0, 3);
   const topEvidence = assessment.evidenceCatalog.evidence.slice(0, 5);
+  const workflow = workflowLabels(assessment.validationStatus, state);
 
   return [
     {
@@ -284,10 +353,26 @@ export const renderModernizationAssessmentBlocks = (
         { type: "mrkdwn", text: `*Confidence*\n${assessment.confidence}` },
         {
           type: "mrkdwn",
-          text: `*Validation*\n${formatValidationStatus(assessment.validationStatus)}`
+          text: `*Validation status*\n${workflow.validationStatus}`
+        },
+        {
+          type: "mrkdwn",
+          text: `*Demo workflow*\n${workflow.demoWorkflow}`
         }
       ]
     },
+    ...(workflow.demoWorkflowNote
+      ? [
+          mrkdwnSection(
+            [
+              "*Workflow state*",
+              `Validation status: ${workflow.validationStatus}`,
+              `Demo workflow: ${workflow.demoWorkflow}`,
+              workflow.demoWorkflowNote
+            ].join("\n")
+          )
+        ]
+      : []),
     {
       type: "section",
       text: {

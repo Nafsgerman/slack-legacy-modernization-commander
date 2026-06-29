@@ -6,9 +6,9 @@ import {
   renderModernizationAssessmentBlocks,
   renderModernizationAssessmentText,
   renderMcpTraceResponse,
-  renderSmeFollowUpResponse,
-  renderSmeReviewedResponse,
-  renderTicketDraftResponse
+  renderMcpTraceResponseBlocks,
+  renderTicketDraftResponse,
+  renderTicketDraftResponseBlocks
 } from "./render.ts";
 import { runLegacyAssessmentWorkflow } from "../domain/orchestrator.ts";
 
@@ -76,8 +76,11 @@ export const createSlackApp = (): App => {
     const assessment = await loadDemoAssessment();
     await respond({
       response_type: "ephemeral",
-      replace_original: false,
-      text: renderSmeReviewedResponse(assessment)
+      replace_original: true,
+      text: `${assessment.moduleName} SME review marked complete for this demo session.`,
+      blocks: renderModernizationAssessmentBlocks(assessment, {
+        demoWorkflowStatus: "sme_reviewed"
+      })
     });
   });
 
@@ -86,8 +89,11 @@ export const createSlackApp = (): App => {
     const assessment = await loadDemoAssessment();
     await respond({
       response_type: "ephemeral",
-      replace_original: false,
-      text: renderSmeFollowUpResponse(assessment)
+      replace_original: true,
+      text: `${assessment.moduleName} SME follow-up requested for this demo session.`,
+      blocks: renderModernizationAssessmentBlocks(assessment, {
+        demoWorkflowStatus: "sme_followup_required"
+      })
     });
   });
 
@@ -97,7 +103,8 @@ export const createSlackApp = (): App => {
     await respond({
       response_type: "ephemeral",
       replace_original: false,
-      text: renderTicketDraftResponse(assessment)
+      text: renderTicketDraftResponse(assessment),
+      blocks: renderTicketDraftResponseBlocks(assessment)
     });
   });
 
@@ -107,7 +114,8 @@ export const createSlackApp = (): App => {
     await respond({
       response_type: "ephemeral",
       replace_original: false,
-      text: renderMcpTraceResponse(assessment)
+      text: renderMcpTraceResponse(assessment),
+      blocks: renderMcpTraceResponseBlocks(assessment)
     });
   });
 
