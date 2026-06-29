@@ -103,7 +103,7 @@ export class ClaudeLegacyAnalysisClient implements LegacyAnalysisClient {
     return {
       moduleId: assessment.moduleId,
       migrationPath: assessment.recommendedMigrationPath,
-      workPackages: assessment.jiraReadyWorkPackages,
+      workPackages: assessment.ticketDraftWorkPackages,
     };
   }
 }

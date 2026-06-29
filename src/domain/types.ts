@@ -1,44 +1,60 @@
 export type RiskLevel = "low" | "medium" | "high" | "critical";
 export type Confidence = "low" | "medium" | "high";
 export type WorkPackagePriority = "p0" | "p1" | "p2";
-export type ValidationStatus = "unverified" | "machine_inferred" | "sme_validated";
+export type ValidationStatus =
+  | "machine_inferred"
+  | "sme_required"
+  | "sme_validated"
+  | "rejected";
 
-export interface EvidenceRef {
-  artifactId: string;
-  startLine: number;
-  endLine: number;
-  excerpt?: string; // set by application code only, never trusted from model
-}
-
-export interface EvidenceCatalog {
-  refs: EvidenceRef[];
-  coverageLineCount: number;
-  verifiedCount: number;
-  unverifiedCount: number;
-}
+export type EvidenceSourceType =
+  | "fixture"
+  | "code"
+  | "copybook"
+  | "file_contract"
+  | "sme_note"
+  | "test_case";
 
 export interface ToolTraceEntry {
   tool: string;
   input: string;
   outputSummary: string;
+  latencyMs?: number;
+  evidenceProduced?: string[];
+}
+
+export interface EvidenceRef {
+  id: string;
+  sourceType: EvidenceSourceType;
+  sourceName: string;
+  locator?: {
+    file?: string;
+    paragraph?: string;
+    lineStart?: number;
+    lineEnd?: number;
+  };
+  excerpt: string;
+}
+
+export interface EvidenceCatalog {
+  assessmentId: string;
+  evidence: EvidenceRef[];
 }
 
 export interface BusinessRule {
   id: string;
   title: string;
   description: string;
-  sourceEvidence: string;
+  evidenceRefs: string[];
   confidence: Confidence;
   validationStatus: ValidationStatus;
-  evidenceRefs: EvidenceRef[];
 }
 
 export interface Dependency {
   name: string;
   type: "database" | "file" | "scheduler" | "api" | "team" | "platform";
   modernizationConcern: string;
-  validationStatus: ValidationStatus;
-  evidenceRefs: EvidenceRef[];
+  evidenceRefs: string[];
 }
 
 export interface SmeQuestion {
@@ -46,8 +62,6 @@ export interface SmeQuestion {
   question: string;
   ownerRole: string;
   reason: string;
-  validationStatus: ValidationStatus;
-  evidenceRefs: EvidenceRef[];
 }
 
 export interface WorkPackage {
@@ -57,29 +71,45 @@ export interface WorkPackage {
   ownerRole: string;
   description: string;
   acceptanceCriteria: string[];
+  evidenceRefs: string[];
   validationStatus: ValidationStatus;
-  evidenceRefs: EvidenceRef[];
+}
+
+export interface SmeValidationChecklistItem {
+  id: string;
+  title: string;
+  ownerRole: string;
+  status: ValidationStatus;
+  evidenceRefs: string[];
+  checklist: string[];
 }
 
 export interface ModernizationAssessment {
   assessmentId: string;
+  generatedAtUtc: string;
   moduleId: string;
   moduleName: string;
   language: string;
   platform: string;
   businessPurpose: string;
+  evidenceCatalog: EvidenceCatalog;
+  confidence: Confidence;
+  validationStatus: ValidationStatus;
   modernizationRisk: {
     level: RiskLevel;
     rationale: string;
     drivers: string[];
+    confidence: Confidence;
+    evidenceRefs: string[];
+    validationStatus: ValidationStatus;
   };
   extractedBusinessRules: BusinessRule[];
   dependencies: Dependency[];
   unknowns: SmeQuestion[];
   recommendedMigrationPath: string[];
-  jiraReadyWorkPackages: WorkPackage[];
+  ticketDraftWorkPackages: WorkPackage[];
+  smeValidationChecklist: SmeValidationChecklistItem[];
   toolTrace: ToolTraceEntry[];
-  evidenceCatalog: EvidenceCatalog;
 }
 
 export interface BusinessRuleReport {
@@ -99,8 +129,7 @@ export interface LegacyAnalysisClient {
   createModernizationPlan(moduleId: string): Promise<ModernizationPlan>;
 }
 
-// Source artifact for citation verification
 export interface SourceArtifact {
   artifactId: string;
-  lines: string[]; // 1-indexed access via lines[lineNum - 1]
+  lines: string[];
 }

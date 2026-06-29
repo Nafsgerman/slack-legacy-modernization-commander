@@ -1,140 +1,88 @@
 import type {
-  EvidenceCatalog,
+  BusinessRule,
+  Dependency,
   EvidenceRef,
   ModernizationAssessment,
+  SmeQuestion,
+  SmeValidationChecklistItem,
   SourceArtifact,
-  ValidationStatus,
+  WorkPackage
 } from "./types.ts";
 import type { ModelProposal, ProposedEvidenceRef } from "../agent/proposal.ts";
 
-// ---------------------------------------------------------------------------
-// Citation verifier — application code sets excerpt, never the model
-// ---------------------------------------------------------------------------
+const statusFromEvidence = (mintedCount: number): "machine_inferred" | "sme_required" =>
+  mintedCount > 0 ? "machine_inferred" : "sme_required";
 
-function verifyRef(
-  proposed: ProposedEvidenceRef,
-  artifacts: Map<string, SourceArtifact>
-): { ref: EvidenceRef; verified: boolean } {
-  const artifact = artifacts.get(proposed.artifactId);
-  if (!artifact) {
-    return {
-      ref: { artifactId: proposed.artifactId, startLine: proposed.startLine, endLine: proposed.endLine },
-      verified: false,
-    };
-  }
-
-  const maxLine = artifact.lines.length;
-  if (
-    proposed.startLine < 1 ||
-    proposed.endLine < proposed.startLine ||
-    proposed.endLine > maxLine
-  ) {
-    return {
-      ref: { artifactId: proposed.artifactId, startLine: proposed.startLine, endLine: proposed.endLine },
-      verified: false,
-    };
-  }
-
-  // Application captures the real excerpt — model's claimed excerpt is discarded
-  const excerpt = artifact.lines
-    .slice(proposed.startLine - 1, proposed.endLine)
-    .join("\n");
-
-  return {
-    ref: {
-      artifactId: proposed.artifactId,
-      startLine: proposed.startLine,
-      endLine: proposed.endLine,
-      excerpt,
-    },
-    verified: true,
-  };
-}
-
-function resolveRefs(
-  proposed: ProposedEvidenceRef[],
-  artifacts: Map<string, SourceArtifact>
-): { refs: EvidenceRef[]; verifiedCount: number; unverifiedCount: number } {
-  let verifiedCount = 0;
-  let unverifiedCount = 0;
-  const refs: EvidenceRef[] = [];
-
-  for (const p of proposed) {
-    const { ref, verified } = verifyRef(p, artifacts);
-    refs.push(ref);
-    if (verified) verifiedCount++;
-    else unverifiedCount++;
-  }
-
-  return { refs, verifiedCount, unverifiedCount };
-}
-
-function statusFromVerification(verified: boolean, hasRefs: boolean): ValidationStatus {
-  if (!hasRefs) return "unverified";
-  return verified ? "machine_inferred" : "unverified";
-}
-
-// ---------------------------------------------------------------------------
-// verifyAndStamp — pure, authoritative, no network
-// ---------------------------------------------------------------------------
-
+// verifyAndStamp: pure, authoritative. The model proposes citations; code verifies
+// each against the real source artifact, mints catalog evidence for the ones that
+// resolve, and assigns validationStatus. The model can never reach sme_validated.
 export function verifyAndStamp(
   proposal: ModelProposal,
   artifacts: Map<string, SourceArtifact>
 ): ModernizationAssessment {
-  let totalVerified = 0;
-  let totalUnverified = 0;
-  let totalLines = 0;
+  const evidence: EvidenceRef[] = [];
+  let seq = 0;
 
-  const extractedBusinessRules = proposal.proposedRules.map((rule) => {
-    const { refs, verifiedCount, unverifiedCount } = resolveRefs(rule.proposedRefs ?? [], artifacts);
-    totalVerified += verifiedCount;
-    totalUnverified += unverifiedCount;
-    totalLines += refs.reduce((acc, r) => acc + (r.endLine - r.startLine + 1), 0);
+  const mint = (proposed: ProposedEvidenceRef): string | null => {
+    const artifact = artifacts.get(proposed.artifactId);
+    if (!artifact) return null;
+    const max = artifact.lines.length;
+    if (proposed.startLine < 1 || proposed.endLine < proposed.startLine || proposed.endLine > max) {
+      return null;
+    }
+    seq += 1;
+    const id = `EV-${String(seq).padStart(3, "0")}`;
+    evidence.push({
+      id,
+      sourceType: "code",
+      sourceName: `${proposed.artifactId}.cbl`,
+      locator: {
+        file: `${proposed.artifactId}.cbl`,
+        lineStart: proposed.startLine,
+        lineEnd: proposed.endLine
+      },
+      excerpt: artifact.lines.slice(proposed.startLine - 1, proposed.endLine).join("\n")
+    });
+    return id;
+  };
 
-    const anyVerified = verifiedCount > 0;
+  const resolveRefs = (refs: ProposedEvidenceRef[] | undefined): string[] => {
+    const ids: string[] = [];
+    for (const r of refs ?? []) {
+      const id = mint(r);
+      if (id) ids.push(id);
+    }
+    return ids;
+  };
+
+  const extractedBusinessRules: BusinessRule[] = proposal.proposedRules.map((rule) => {
+    const refs = resolveRefs(rule.proposedRefs);
     return {
       id: rule.id,
       title: rule.title,
       description: rule.description,
-      sourceEvidence: rule.sourceEvidence,
+      evidenceRefs: refs,
       confidence: rule.confidence,
-      validationStatus: statusFromVerification(anyVerified, refs.length > 0),
-      evidenceRefs: refs,
+      validationStatus: statusFromEvidence(refs.length)
     };
   });
 
-  const dependencies = proposal.proposedDependencies.map((dep) => {
-    const { refs, verifiedCount, unverifiedCount } = resolveRefs(dep.proposedRefs ?? [], artifacts);
-    totalVerified += verifiedCount;
-    totalUnverified += unverifiedCount;
-    return {
-      name: dep.name,
-      type: dep.type,
-      modernizationConcern: dep.modernizationConcern,
-      validationStatus: statusFromVerification(verifiedCount > 0, refs.length > 0),
-      evidenceRefs: refs,
-    };
-  });
+  const dependencies: Dependency[] = proposal.proposedDependencies.map((dep) => ({
+    name: dep.name,
+    type: dep.type,
+    modernizationConcern: dep.modernizationConcern,
+    evidenceRefs: resolveRefs(dep.proposedRefs)
+  }));
 
-  const unknowns = proposal.proposedUnknowns.map((q) => {
-    const { refs, verifiedCount, unverifiedCount } = resolveRefs(q.proposedRefs ?? [], artifacts);
-    totalVerified += verifiedCount;
-    totalUnverified += unverifiedCount;
-    return {
-      id: q.id,
-      question: q.question,
-      ownerRole: q.ownerRole,
-      reason: q.reason,
-      validationStatus: statusFromVerification(verifiedCount > 0, refs.length > 0),
-      evidenceRefs: refs,
-    };
-  });
+  const unknowns: SmeQuestion[] = proposal.proposedUnknowns.map((q) => ({
+    id: q.id,
+    question: q.question,
+    ownerRole: q.ownerRole,
+    reason: q.reason
+  }));
 
-  const jiraReadyWorkPackages = proposal.proposedWorkPackages.map((wp) => {
-    const { refs, verifiedCount, unverifiedCount } = resolveRefs(wp.proposedRefs ?? [], artifacts);
-    totalVerified += verifiedCount;
-    totalUnverified += unverifiedCount;
+  const ticketDraftWorkPackages: WorkPackage[] = proposal.proposedWorkPackages.map((wp) => {
+    const refs = resolveRefs(wp.proposedRefs);
     return {
       key: wp.key,
       title: wp.title,
@@ -142,37 +90,38 @@ export function verifyAndStamp(
       ownerRole: wp.ownerRole,
       description: wp.description,
       acceptanceCriteria: wp.acceptanceCriteria,
-      validationStatus: statusFromVerification(verifiedCount > 0, refs.length > 0),
       evidenceRefs: refs,
+      validationStatus: statusFromEvidence(refs.length)
     };
   });
 
-  const evidenceCatalog: EvidenceCatalog = {
-    refs: [
-      ...extractedBusinessRules.flatMap((r) => r.evidenceRefs),
-      ...dependencies.flatMap((d) => d.evidenceRefs),
-      ...unknowns.flatMap((q) => q.evidenceRefs),
-      ...jiraReadyWorkPackages.flatMap((wp) => wp.evidenceRefs),
-    ],
-    coverageLineCount: totalLines,
-    verifiedCount: totalVerified,
-    unverifiedCount: totalUnverified,
-  };
+  const smeValidationChecklist: SmeValidationChecklistItem[] = [];
 
   return {
     assessmentId: proposal.assessmentId,
+    generatedAtUtc: new Date().toISOString(),
     moduleId: proposal.moduleId,
     moduleName: proposal.moduleName,
     language: proposal.language,
     platform: proposal.platform,
     businessPurpose: proposal.businessPurpose,
-    modernizationRisk: proposal.modernizationRisk,
+    evidenceCatalog: { assessmentId: proposal.assessmentId, evidence },
+    confidence: "medium",
+    validationStatus: "sme_required",
+    modernizationRisk: {
+      level: proposal.modernizationRisk.level,
+      rationale: proposal.modernizationRisk.rationale,
+      drivers: proposal.modernizationRisk.drivers,
+      confidence: "medium",
+      evidenceRefs: [],
+      validationStatus: "sme_required"
+    },
     extractedBusinessRules,
     dependencies,
     unknowns,
     recommendedMigrationPath: proposal.recommendedMigrationPath,
-    jiraReadyWorkPackages,
-    toolTrace: proposal.toolTrace,
-    evidenceCatalog,
+    ticketDraftWorkPackages,
+    smeValidationChecklist,
+    toolTrace: proposal.toolTrace
   };
 }
