@@ -12,6 +12,7 @@ import {
 } from "./render.ts";
 import type { ModernizationAssessment } from "../domain/types.ts";
 import { runLegacyAssessmentWorkflow } from "../domain/orchestrator.ts";
+import { applyValidationDecision } from "../domain/validation-decision.ts";
 
 const requiredEnv = (name: string): string => {
   const value = process.env[name];
@@ -45,6 +46,11 @@ const resolveCardTarget = (body: BlockAction): { channel?: string; ts?: string }
   ts: body.message?.ts
 });
 
+const isNotInChannel = (error: unknown): boolean =>
+  typeof error === "object" &&
+  error !== null &&
+  (error as { data?: { error?: string } }).data?.error === "not_in_channel";
+
 export const createSlackApp = (): App => {
   const app = new App({
     token: requiredEnv("SLACK_BOT_TOKEN"),
@@ -61,10 +67,23 @@ export const createSlackApp = (): App => {
 
     if (normalizedText === "assess claims-batch" || normalizedText === "demo") {
       const assessment = await loadDemoAssessment();
-      await client.chat.postMessage({
-        channel: command.channel_id,
-        ...buildAssessmentBlocks(assessment)
-      });
+      try {
+        await client.chat.postMessage({
+          channel: command.channel_id,
+          ...buildAssessmentBlocks(assessment)
+        });
+      } catch (error) {
+        if (isNotInChannel(error)) {
+          await respond({
+            response_type: "ephemeral",
+            text:
+              "I need to be a member of this channel to post the assessment card. " +
+              "Add me via the channel name → Integrations → Add apps, then re-run `/legacy assess claims-batch`."
+          });
+          return;
+        }
+        throw error;
+      }
       return;
     }
 
@@ -77,17 +96,19 @@ export const createSlackApp = (): App => {
   });
 
   // SME decision buttons mutate the bot-owned card in place via chat.update.
-  // Deterministic: no response_url / replace_original edge cases.
+  // The whole assessment is re-validated through applyValidationDecision, so
+  // every rule / work package / checklist status flips visibly — not just the header.
   app.action(legacyAssessmentActionIds.markSmeReviewed, async ({ ack, body, client }) => {
     await ack();
     const { channel, ts } = resolveCardTarget(body as BlockAction);
     if (!channel || !ts) return;
     const assessment = await loadDemoAssessment();
+    const reviewed = applyValidationDecision(assessment, "sme_validated");
     await client.chat.update({
       channel,
       ts,
       text: `${assessment.moduleName}: SME review marked complete for this demo session. No persistent enterprise state changed.`,
-      blocks: renderModernizationAssessmentBlocks(assessment, { demoWorkflowStatus: "sme_reviewed" })
+      blocks: renderModernizationAssessmentBlocks(reviewed, { demoWorkflowStatus: "sme_reviewed" })
     });
   });
 
@@ -96,11 +117,12 @@ export const createSlackApp = (): App => {
     const { channel, ts } = resolveCardTarget(body as BlockAction);
     if (!channel || !ts) return;
     const assessment = await loadDemoAssessment();
+    const flagged = applyValidationDecision(assessment, "sme_required");
     await client.chat.update({
       channel,
       ts,
       text: `${assessment.moduleName}: SME follow-up requested for this demo session. No persistent enterprise state changed.`,
-      blocks: renderModernizationAssessmentBlocks(assessment, { demoWorkflowStatus: "sme_followup_required" })
+      blocks: renderModernizationAssessmentBlocks(flagged, { demoWorkflowStatus: "sme_followup_required" })
     });
   });
 
