@@ -8,7 +8,7 @@ import type {
   SourceArtifact,
   WorkPackage
 } from "./types.ts";
-import type { ModelProposal, ProposedEvidenceRef } from "../agent/proposal.ts";
+import type { ModelProposal, ProposedEvidenceRef, ProposedUnknown } from "../agent/proposal.ts";
 
 const statusFromEvidence = (mintedCount: number): "machine_inferred" | "sme_required" =>
   mintedCount > 0 ? "machine_inferred" : "sme_required";
@@ -55,6 +55,9 @@ export function verifyAndStamp(
     return ids;
   };
 
+  // Risk evidence is resolved against real source, exactly like rules/work packages.
+  const riskRefs = resolveRefs(proposal.modernizationRisk.proposedRefs);
+
   const extractedBusinessRules: BusinessRule[] = proposal.proposedRules.map((rule) => {
     const refs = resolveRefs(rule.proposedRefs);
     return {
@@ -74,11 +77,18 @@ export function verifyAndStamp(
     evidenceRefs: resolveRefs(dep.proposedRefs)
   }));
 
-  const unknowns: SmeQuestion[] = proposal.proposedUnknowns.map((q) => ({
-    id: q.id,
-    question: q.question,
-    ownerRole: q.ownerRole,
-    reason: q.reason
+  // Resolve unknown refs once, reusing the minted evidence for both the unknown
+  // record and the derived SME checklist item — single source of truth.
+  const unknownsWithRefs = proposal.proposedUnknowns.map((q) => ({
+    proposed: q,
+    evidenceRefs: resolveRefs(q.proposedRefs)
+  }));
+
+  const unknowns: SmeQuestion[] = unknownsWithRefs.map(({ proposed }) => ({
+    id: proposed.id,
+    question: proposed.question,
+    ownerRole: proposed.ownerRole,
+    reason: proposed.reason
   }));
 
   const ticketDraftWorkPackages: WorkPackage[] = proposal.proposedWorkPackages.map((wp) => {
@@ -95,7 +105,26 @@ export function verifyAndStamp(
     };
   });
 
-  const smeValidationChecklist: SmeValidationChecklistItem[] = [];
+  // The SME validation checklist is DERIVED by the application from the model's
+  // unknowns — the model never emits a checklist directly. This is the
+  // model-proposes / application-validates boundary doing visible work: each
+  // unresolved question becomes a structured, owner-assigned validation item.
+  const smeValidationChecklist: SmeValidationChecklistItem[] = unknownsWithRefs.map(
+    ({ proposed, evidenceRefs }, index) => ({
+      id: `SME-${String(index + 1).padStart(3, "0")}`,
+      title: deriveChecklistTitle(proposed),
+      ownerRole: proposed.ownerRole || "Subject Matter Expert",
+      status: "sme_required",
+      evidenceRefs,
+      checklist: [
+        `Resolve open question: ${proposed.question}`,
+        proposed.reason
+          ? `Confirm rationale: ${proposed.reason}`
+          : "Confirm business rationale with the owning team",
+        "Record the validated decision and any required follow-up work"
+      ]
+    })
+  );
 
   return {
     assessmentId: proposal.assessmentId,
@@ -113,8 +142,8 @@ export function verifyAndStamp(
       rationale: proposal.modernizationRisk.rationale,
       drivers: proposal.modernizationRisk.drivers,
       confidence: "medium",
-      evidenceRefs: [],
-      validationStatus: "sme_required"
+      evidenceRefs: riskRefs,
+      validationStatus: statusFromEvidence(riskRefs.length)
     },
     extractedBusinessRules,
     dependencies,
@@ -125,3 +154,11 @@ export function verifyAndStamp(
     toolTrace: proposal.toolTrace
   };
 }
+
+// Turns an unknown into a concise, action-oriented checklist title.
+// Strips trailing punctuation and caps length so the Slack card stays clean.
+const deriveChecklistTitle = (unknown: ProposedUnknown): string => {
+  const base = unknown.question.trim().replace(/[?.\s]+$/, "");
+  const prefixed = base.toLowerCase().startsWith("validate") ? base : `Validate: ${base}`;
+  return prefixed.length > 110 ? `${prefixed.slice(0, 107)}…` : prefixed;
+};

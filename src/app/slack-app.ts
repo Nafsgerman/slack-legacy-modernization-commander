@@ -51,7 +51,7 @@ export const createSlackApp = (): App => {
 
   const demoState = new Map<string, DemoWorkflowRenderState>();
 
-  app.command("/legacy", async ({ command, ack, client, logger }) => {
+  app.command("/legacy", async ({ command, ack, client, respond, logger }) => {
     let parsed;
     try {
       parsed = parseAssessArgs(command.text);
@@ -83,14 +83,40 @@ export const createSlackApp = (): App => {
       throw err;
     }
 
-    const assessment = await runLegacyAssessmentWorkflow(parsed.moduleId, resolved.client);
+    // ack() must fire within Slack's 3s window. Agent-mode calls take 15-40s,
+    // so we ack with a placeholder immediately, then deliver the real result
+    // via respond() (response_url, valid ~30min) once the workflow finishes.
+    const placeholderText =
+      resolved.mode === "agent"
+        ? `Running live agent assessment on *${parsed.moduleId}* via ${resolved.model}… this can take up to a minute.`
+        : `Running fixture assessment on *${parsed.moduleId}*…`;
+
     await ack({
       response_type: "ephemeral",
-      text: renderModernizationAssessmentText(assessment, resolved),
-      blocks: renderModernizationAssessmentBlocks(assessment, undefined, resolved)
+      text: placeholderText,
+      blocks: [{ type: "section", text: { type: "mrkdwn", text: placeholderText } }]
     });
-    // Post the initial (machine-inferred) traceability graph to the channel.
-    await postTraceabilityGraph(client, assessment);
+
+    try {
+      const assessment = await runLegacyAssessmentWorkflow(parsed.moduleId, resolved.client);
+      await respond({
+        replace_original: true,
+        response_type: "ephemeral",
+        text: renderModernizationAssessmentText(assessment, resolved),
+        blocks: renderModernizationAssessmentBlocks(assessment, undefined, resolved)
+      });
+      // Post the initial (machine-inferred) traceability graph to the channel.
+      await postTraceabilityGraph(client, assessment);
+    } catch (err) {
+      logger.error("/legacy assess failed after ack", err);
+      const failureText = `Assessment failed: ${(err as Error).message}`;
+      await respond({
+        replace_original: true,
+        response_type: "ephemeral",
+        text: failureText,
+        blocks: [{ type: "section", text: { type: "mrkdwn", text: failureText } }]
+      });
+    }
   });
 
   app.event("app_home_opened", async ({ event, client, logger }) => {

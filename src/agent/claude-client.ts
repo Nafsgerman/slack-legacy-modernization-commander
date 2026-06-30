@@ -28,7 +28,7 @@ You will be given the full source of a COBOL module. Your job is to produce a mo
 
 CRITICAL RULES:
 1. Return ONLY valid JSON — no markdown fences, no preamble.
-2. For every business rule, dependency, and work package, include proposedRefs pointing to actual line numbers in the source.
+2. For every business rule, dependency, work package, AND the modernizationRisk, include proposedRefs pointing to actual line numbers in the source.
 3. You MUST NOT include any "validationStatus" field anywhere in your response. Validation is the application's responsibility.
 4. Line numbers must be real lines in the source provided.
 5. proposedRefs format: { "artifactId": "<moduleId>", "startLine": <number>, "endLine": <number> }
@@ -41,7 +41,7 @@ Respond with this exact shape (no extra fields):
   "language": "COBOL",
   "platform": "z/OS batch",
   "businessPurpose": "<string>",
-  "modernizationRisk": { "level": "high|medium|low|critical", "rationale": "<string>", "drivers": ["<string>"] },
+  "modernizationRisk": { "level": "high|medium|low|critical", "rationale": "<string>", "drivers": ["<string>"], "proposedRefs": [{ "artifactId": "<moduleId>", "startLine": <number>, "endLine": <number> }] },
   "proposedRules": [{ "id": "BR-001", "title": "", "description": "", "sourceEvidence": "", "confidence": "high|medium|low", "proposedRefs": [...] }],
   "proposedDependencies": [{ "name": "", "type": "database|file|scheduler|api|team|platform", "modernizationConcern": "", "proposedRefs": [...] }],
   "proposedUnknowns": [{ "id": "Q-001", "question": "", "ownerRole": "", "reason": "", "proposedRefs": [] }],
@@ -67,7 +67,7 @@ export class ClaudeLegacyAnalysisClient implements LegacyAnalysisClient {
 
     const message = await this.client.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 4096,
+      max_tokens: 16384,
       system: SYSTEM_PROMPT,
       messages: [
         {
@@ -85,8 +85,14 @@ export class ClaudeLegacyAnalysisClient implements LegacyAnalysisClient {
     let rawJson: unknown;
     try {
       rawJson = JSON.parse(rawText.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim());
-    } catch {
-      throw new Error(`Claude returned non-JSON response: ${rawText.slice(0, 200)}`);
+    } catch (parseErr) {
+      const stopReason = message.stop_reason;
+      const lengthNote = stopReason === "max_tokens" ? " (truncated: hit max_tokens)" : "";
+      throw new Error(
+        `Claude returned non-JSON response${lengthNote}. stop_reason=${stopReason}, length=${rawText.length}.\n` +
+          `Parse error: ${(parseErr as Error).message}\n` +
+          `Tail (last 300 chars): ${rawText.slice(-300)}`
+      );
     }
 
     const proposal = parseModelProposal(rawJson);

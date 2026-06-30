@@ -58,6 +58,7 @@ export interface ModelProposal {
     level: RiskLevel;
     rationale: string;
     drivers: string[];
+    proposedRefs?: ProposedEvidenceRef[];
   };
   proposedRules: ProposedRule[];
   proposedDependencies: ProposedDependency[];
@@ -156,6 +157,7 @@ export function parseModelProposal(raw: unknown): ModelProposal {
       level: (["low","medium","high","critical"].includes(String(risk["level"])) ? risk["level"] : "medium") as RiskLevel,
       rationale: String(risk["rationale"] ?? ""),
       drivers: Array.isArray(risk["drivers"]) ? risk["drivers"].map(String) : [],
+      proposedRefs: parseRefs(risk["proposedRefs"]),
     },
     proposedRules: parseRules(r["proposedRules"]),
     proposedDependencies: parseDeps(r["proposedDependencies"]),
