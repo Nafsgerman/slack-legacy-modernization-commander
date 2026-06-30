@@ -31,7 +31,7 @@ const evidenceCoverage = (assessment: ModernizationAssessment): string => {
 
 export const buildAppHomeBlocks = (
   assessment: ModernizationAssessment,
-  graphPermalink: string,
+  graphFileId: string,
   state?: DemoWorkflowRenderState
 ): KnownBlock[] => {
   const model = resolveTraceabilityGraph(assessment);
@@ -54,7 +54,7 @@ export const buildAppHomeBlocks = (
       ]
     },
     { type: "divider" },
-    ...(graphPermalink
+    ...(graphFileId
       ? ([
           {
             type: "section",
@@ -65,7 +65,7 @@ export const buildAppHomeBlocks = (
           },
           {
             type: "image",
-            image_url: graphPermalink,
+            slack_file: { id: graphFileId },
             alt_text: "Evidence traceability graph"
           }
         ] as KnownBlock[])
@@ -107,18 +107,18 @@ export const publishAppHome = async (
   assessment: ModernizationAssessment,
   state?: DemoWorkflowRenderState
 ): Promise<void> => {
-  let graphPermalink = "";
+  let graphFileId = "";
 
   try {
     if (DEMO_CHANNEL_ID) {
       const uploaded = await uploadTraceabilityGraph(client, assessment, DEMO_CHANNEL_ID);
-      graphPermalink = uploaded.permalink;
+      graphFileId = uploaded.fileId;
     }
   } catch (err) {
     console.error("Graph upload failed — publishing Home without graph image:", err);
   }
 
-  const blocks = buildAppHomeBlocks(assessment, graphPermalink, state);
+  const blocks = buildAppHomeBlocks(assessment, graphFileId, state);
 
   await client.views.publish({
     user_id: userId,
