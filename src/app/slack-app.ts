@@ -10,10 +10,10 @@ import {
   renderTicketDraftResponse,
   renderTicketDraftResponseBlocks
 } from "./render.ts";
-import { runLegacyAssessmentWorkflow } from "../domain/orchestrator.ts";
-import { publishAppHome } from "./home.ts";
 import type { DemoWorkflowRenderState } from "./render.ts";
+import { runLegacyAssessmentWorkflow } from "../domain/orchestrator.ts";
 import { applyValidationDecision } from "../domain/validation-decision.ts";
+import { publishAppHome, postTraceabilityGraph } from "./home.ts";
 
 const requiredEnv = (name: string): string => {
   const value = process.env[name];
@@ -27,7 +27,7 @@ const helpText = [
   "Run the demo modernization assessment:",
   "`/legacy assess claims-batch`",
   "",
-  "Current demo: COBOL claims batch modernization assessment with business rules, dependencies, SME questions, migration path, work packages, and tool-call audit summary."
+  "Returns a COBOL claims-batch assessment with business rules, dependencies, SME questions, migration path, work packages, and tool-call audit summary."
 ].join("\n");
 
 const normalizeCommandText = (text: string | undefined): string =>
@@ -43,7 +43,7 @@ export const createSlackApp = (): App => {
 
   const demoState = new Map<string, DemoWorkflowRenderState>();
 
-  app.command("/legacy", async ({ command, ack, logger }) => {
+  app.command("/legacy", async ({ command, ack, client, logger }) => {
     const normalizedText = normalizeCommandText(command.text);
     if (normalizedText === "assess claims-batch" || normalizedText === "demo") {
       const assessment = await runLegacyAssessmentWorkflow("claims-batch");
@@ -52,6 +52,8 @@ export const createSlackApp = (): App => {
         text: renderModernizationAssessmentText(assessment),
         blocks: renderModernizationAssessmentBlocks(assessment)
       });
+      // Post the initial (machine-inferred) traceability graph to the channel.
+      await postTraceabilityGraph(client, assessment);
       return;
     }
     logger.info(`Unhandled /legacy command text: "${command.text}"`);
@@ -64,15 +66,15 @@ export const createSlackApp = (): App => {
 
   app.event("app_home_opened", async ({ event, client, logger }) => {
     try {
-      const baseAssessment = await runLegacyAssessmentWorkflow("claims-batch");
+      const base = await runLegacyAssessmentWorkflow("claims-batch");
       const key = `${event.user}:claims-batch`;
       const state = demoState.get(key);
       const assessment =
         state?.demoWorkflowStatus === "sme_reviewed"
-          ? applyValidationDecision(baseAssessment, "sme_validated")
+          ? applyValidationDecision(base, "sme_validated")
           : state?.demoWorkflowStatus === "sme_followup_required"
-          ? applyValidationDecision(baseAssessment, "sme_required")
-          : baseAssessment;
+          ? applyValidationDecision(base, "sme_required")
+          : base;
       await publishAppHome(client, event.user, assessment, state);
     } catch (err) {
       logger.error("app_home_opened: failed to publish Home", err);
@@ -83,8 +85,8 @@ export const createSlackApp = (): App => {
     await ack();
     try {
       const userId = body.user.id;
-      const baseAssessment = await runLegacyAssessmentWorkflow("claims-batch");
-      const assessment = applyValidationDecision(baseAssessment, "sme_validated");
+      const base = await runLegacyAssessmentWorkflow("claims-batch");
+      const assessment = applyValidationDecision(base, "sme_validated");
       const key = `${userId}:claims-batch`;
       const state: DemoWorkflowRenderState = { demoWorkflowStatus: "sme_reviewed" };
       demoState.set(key, state);
@@ -94,6 +96,7 @@ export const createSlackApp = (): App => {
         blocks: renderModernizationAssessmentBlocks(assessment, state)
       });
       await publishAppHome(client, userId, assessment, state);
+      await postTraceabilityGraph(client, assessment);
     } catch (err) {
       logger.error("markSmeReviewed error", err);
     }
@@ -103,8 +106,8 @@ export const createSlackApp = (): App => {
     await ack();
     try {
       const userId = body.user.id;
-      const baseAssessment = await runLegacyAssessmentWorkflow("claims-batch");
-      const assessment = applyValidationDecision(baseAssessment, "sme_required");
+      const base = await runLegacyAssessmentWorkflow("claims-batch");
+      const assessment = applyValidationDecision(base, "sme_required");
       const key = `${userId}:claims-batch`;
       const state: DemoWorkflowRenderState = { demoWorkflowStatus: "sme_followup_required" };
       demoState.set(key, state);
@@ -114,6 +117,7 @@ export const createSlackApp = (): App => {
         blocks: renderModernizationAssessmentBlocks(assessment, state)
       });
       await publishAppHome(client, userId, assessment, state);
+      await postTraceabilityGraph(client, assessment);
     } catch (err) {
       logger.error("needsSmeFollowUp error", err);
     }

@@ -7,7 +7,7 @@ import { uploadTraceabilityGraph } from "./graph/upload.ts";
 
 const DEMO_CHANNEL_ID = process.env["SLACK_DEMO_CHANNEL_ID"] ?? "";
 
-const validationSummary = (assessment: ModernizationAssessment): string => {
+export const validationSummary = (assessment: ModernizationAssessment): string => {
   const rules = assessment.extractedBusinessRules;
   const wps = assessment.ticketDraftWorkPackages;
   const checklist = assessment.smeValidationChecklist;
@@ -20,18 +20,15 @@ const validationSummary = (assessment: ModernizationAssessment): string => {
 
 const evidenceCoverage = (assessment: ModernizationAssessment): string => {
   const total = assessment.evidenceCatalog.evidence.length;
-  const cited = new Set(
-    [
-      ...assessment.extractedBusinessRules.flatMap((r) => r.evidenceRefs),
-      ...assessment.ticketDraftWorkPackages.flatMap((w) => w.evidenceRefs)
-    ]
-  ).size;
+  const cited = new Set([
+    ...assessment.extractedBusinessRules.flatMap((r) => r.evidenceRefs),
+    ...assessment.ticketDraftWorkPackages.flatMap((w) => w.evidenceRefs)
+  ]).size;
   return `${cited}/${total} evidence items cited`;
 };
 
 export const buildAppHomeBlocks = (
   assessment: ModernizationAssessment,
-  graphFileId: string,
   state?: DemoWorkflowRenderState
 ): KnownBlock[] => {
   const model = resolveTraceabilityGraph(assessment);
@@ -49,27 +46,13 @@ export const buildAppHomeBlocks = (
         { type: "mrkdwn", text: `*Risk*\n${assessment.modernizationRisk.level.toUpperCase()}` },
         { type: "mrkdwn", text: `*Validation progress*\n${validationSummary(assessment)}` },
         { type: "mrkdwn", text: `*Evidence coverage*\n${evidenceCoverage(assessment)}` },
-        { type: "mrkdwn", text: `*Unresolved refs*\n${unresolved === 0 ? "None ✓" : `⚠ ${unresolved}`}` },
+        {
+          type: "mrkdwn",
+          text: `*Unresolved refs*\n${unresolved === 0 ? "None ✓" : `⚠ ${unresolved}`}`
+        },
         { type: "mrkdwn", text: `*Demo session*\n${state?.demoWorkflowStatus ?? "initial"}` }
       ]
     },
-    { type: "divider" },
-    ...(graphFileId
-      ? ([
-          {
-            type: "section",
-            text: {
-              type: "mrkdwn",
-              text: "*Evidence traceability graph*\nNodes: business rules (BR) and work packages (LMC) anchored to line-cited evidence (EV). Color = validation status."
-            }
-          },
-          {
-            type: "image",
-            slack_file: { id: graphFileId },
-            alt_text: "Evidence traceability graph"
-          }
-        ] as KnownBlock[])
-      : []),
     { type: "divider" },
     {
       type: "section",
@@ -94,7 +77,7 @@ export const buildAppHomeBlocks = (
       elements: [
         {
           type: "mrkdwn",
-          text: `Assessment ${assessment.assessmentId} · Deterministic fixture · SME validation required before implementation`
+          text: "Evidence traceability graph posts to the demo channel on each SME decision · Deterministic fixture · SME validation required before implementation"
         }
       ]
     }
@@ -107,24 +90,33 @@ export const publishAppHome = async (
   assessment: ModernizationAssessment,
   state?: DemoWorkflowRenderState
 ): Promise<void> => {
-  let graphFileId = "";
-
-  try {
-    if (DEMO_CHANNEL_ID) {
-      const uploaded = await uploadTraceabilityGraph(client, assessment, DEMO_CHANNEL_ID);
-      graphFileId = uploaded.fileId;
-    }
-  } catch (err) {
-    console.error("Graph upload failed — publishing Home without graph image:", err);
-  }
-
-  const blocks = buildAppHomeBlocks(assessment, graphFileId, state);
-
   await client.views.publish({
     user_id: userId,
     view: {
       type: "home",
-      blocks
+      blocks: buildAppHomeBlocks(assessment, state)
     }
   });
+};
+
+// Posts the traceability graph PNG into the demo channel, captioned with live
+// validation state. Channel image messages are the most robust Slack image
+// surface — they render for every channel member, no auth/visibility caveats.
+// Errors are swallowed so a graph failure never breaks the card or Home publish.
+export const postTraceabilityGraph = async (
+  client: WebClient,
+  assessment: ModernizationAssessment
+): Promise<void> => {
+  if (!DEMO_CHANNEL_ID) {
+    console.warn("SLACK_DEMO_CHANNEL_ID not set — skipping traceability graph post.");
+    return;
+  }
+  const caption = `*Evidence traceability graph* · ${assessment.moduleName} · ${validationSummary(
+    assessment
+  )} · color = validation status`;
+  try {
+    await uploadTraceabilityGraph(client, assessment, DEMO_CHANNEL_ID, caption);
+  } catch (err) {
+    console.error("Traceability graph post failed:", err);
+  }
 };
