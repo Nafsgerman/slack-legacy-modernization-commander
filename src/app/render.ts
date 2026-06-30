@@ -479,8 +479,11 @@ export const renderModernizationAssessmentBlocks = (
         {
           type: "mrkdwn",
           text:
-            `${assessment.toolTrace.length} MCP tool calls · deterministic fixture data · ` +
-            "use Show trace for tool details · SME validation required before implementation"
+            `${assessment.toolTrace.length} tool calls · ${
+              resolved?.mode === "agent"
+                ? "live grounded agent assessment"
+                : "deterministic fixture data"
+            } · use Show trace for tool details · SME validation required before implementation`
         }
       ]
     }

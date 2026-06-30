@@ -77,7 +77,7 @@ export const buildAppHomeBlocks = (
       elements: [
         {
           type: "mrkdwn",
-          text: "Evidence traceability graph posts to the demo channel on each SME decision · Deterministic fixture · SME validation required before implementation"
+          text: "This dashboard reflects SME-validated workflow state, not raw model output · Live grounded assessment available via `/legacy assess claims-batch --agent` · SME validation required before implementation"
         }
       ]
     }
