@@ -2,109 +2,128 @@
 
 Slack-native command center for enterprise legacy modernization teams.
 
-Legacy Modernization Commander turns a legacy system module into a business-readable modernization assessment directly inside Slack, then lets the team act on it without leaving the channel. It helps transformation teams understand what a legacy module does, which business rules it contains, where migration risk lives, what SMEs need to validate, and which Jira-ready work packages should move next — and mark that work as reviewed, routed, or drafted in place.
+Built by a modernization practitioner with 22 years across COBOL, OLTP, and mainframe legacy estates. This is the operator's view of where migration programs actually break — not in code conversion, but in the coordination of business rules, dependencies, and SME validation that conversion silently assumes is already done.
 
-This project is built for the Slack Agent Builder Challenge as a focused, portfolio-grade agentic workflow demo.
+Legacy Modernization Commander turns a legacy module into a business-readable modernization assessment inside Slack: what the module does, which business rules it encodes, where migration risk concentrates, what SMEs must validate, and which work packages should move next. Built for the Slack Agent Builder Challenge as a focused, portfolio-grade agentic workflow.
 
-## Demo Command
+## Demo command
 
     /legacy assess claims-batch
 
-The command returns an interactive structured modernization assessment for a synthetic COBOL claims batch module.
+Returns a structured modernization assessment for a synthetic COBOL claims-batch module (`CLAIMS-BATCH`, z/OS batch, insurance claims adjudication).
 
-## Why This Exists
+## Three modes
 
-Legacy modernization is not only a code-conversion problem.
+The command runs in one of three modes:
 
-In real enterprise programs, the hard part is coordination across engineers, architects, business SMEs, compliance, delivery managers, product owners, and downstream system teams. Modernization work gets blocked when business rules are hidden in code, dependencies are unclear, and delivery teams do not have a shared operating surface.
+| Mode | Invocation | Behavior |
+| --- | --- | --- |
+| **Auto** | `/legacy assess claims-batch` | Agent if `ANTHROPIC_API_KEY` is set, otherwise fixture. |
+| **Agent** | `/legacy assess claims-batch --agent` | Live Claude grounding (`claude-sonnet-4-6`) against real COBOL source. |
+| **Fixture** | `/legacy assess claims-batch --fixture` | Deterministic local fixture. No model call. |
 
-Legacy Modernization Commander uses Slack as that operating surface.
+Auto mode means the demo always works — with a key it grounds live; without one it falls back to a deterministic assessment of the same shape.
 
-## What the MVP Shows
+## The architectural boundary
 
-The current MVP demonstrates one polished vertical slice:
+This is the point of the project.
 
-- COBOL module assessment
-- Business-purpose summary
-- Migration-risk analysis
-- Business-rule extraction
-- Dependency mapping
-- SME review questions
-- Recommended migration path
-- Jira-ready modernization work packages
-- Tool-call/audit summary
-- Interactive review workflow that mutates the assessment card in place
-- Clean adapter boundary for future Claude or backend integration
+**The agent proposes a grounded assessment. The deterministic application layer owns SME validation state.**
 
-The implemented demo module is:
+Every claim the agent produces — risk level, each business rule, each work package — is stamped `machine_inferred` or `sme_required`. The model has no path to `sme_validated`. That status can only be reached through the application's SME validation workflow, and the type system enforces it: the agent's output type cannot express a validated claim. This is covered by adversarial tests that assert the model can never emit or escalate to a validated state.
 
-    CLAIMS-BATCH
-    Language: COBOL
-    Platform: z/OS batch
-    Domain: insurance claims adjudication
+The App Home dashboard reflects *validated workflow state*, not raw model output. Model-proposes / app-validates is enforced at the type level, not by convention.
 
-## Interactive Review Workflow
+## How grounding works (agent mode)
 
-The assessment is not a one-shot report. Once the card posts, action buttons let a reviewer drive the modernization workflow directly inside Slack. Each click **mutates the original card in place** (`replace_original: true` + re-rendered Block Kit) rather than appending a new ephemeral note, so the card's validation state visibly changes as the team works it.
+1. The model is given the real source (`src/demo/source/claims-batch.cbl`) and proposes citations — paragraph and line references — for each rule and risk it asserts.
+2. `verifyAndStamp` (pure, no model in the loop) resolves each proposed reference against the actual source lines.
+3. Resolved references mint catalog evidence (`EV-###`) in the `EvidenceCatalog`, each carrying a file/paragraph/line locator and the real excerpt.
+4. Each claim is assigned a `validationStatus`. A claim whose citation does not resolve does not get to stand as grounded.
 
-- **Mark reviewed** — flips the assessment's validation status to `reviewed`; the status indicator updates in the existing card.
-- **SME follow-up** — marks the open SME questions as routed for follow-up.
-- **Draft ticket** — marks the Jira-ready work packages as drafted.
-- **Show trace** — expands the tool-call/audit summary inside the same card.
+Every assertion in the assessment traces to a row in the evidence catalog. No catalog reference, no claim.
 
-This is the core UX bet: the assessment card is a live workflow surface, not static output.
+## Derived SME checklist
 
-## Current Status
+The model never emits a validation checklist. The application **derives** the `smeValidationChecklist` from the model's `unknowns`. This keeps the agent in its lane (surfacing what it doesn't know) and the application in its lane (owning the workflow that resolves it).
 
-Working TypeScript/Node MVP with local Slack Socket Mode integration and interactive Block Kit actions.
+## Interactive Slack loop
 
-The MVP uses deterministic fixtures rather than live production mainframe or enterprise-system integrations. This keeps the demo reliable, reviewable, and safe while showing the intended agent workflow and Slack-native user experience. Interactivity is real and on the live demo path; the mutated state is held per-action for the demo and is not yet persisted to an external system.
+The assessment is not a one-shot report. It is the entry point to a workflow.
 
-## Architecture Principle
+The assessment card carries action buttons:
 
-This repository is the Slack workflow-orchestration layer.
+- **Mark reviewed**
+- **SME follow-up**
+- **Draft ticket**
+- **Show trace**
 
-It is intentionally not tightly coupled to a specific COBOL parser, LLM provider, ticketing tool, or modernization backend. The domain layer exposes an adapter boundary so a future implementation can connect to Claude, a legacy-code analysis service, Jira, or a broader modernization platform.
+Each SME decision updates the App Home live dashboard and posts a refreshed traceability graph (PNG) to the demo channel. The dashboard tracks validation state across the assessment as SMEs work through it — the workflow surface, not a static document.
 
-Planned adapter interface:
+## What is real vs. synthetic
 
-    export interface LegacyAnalysisClient {
-      assessModule(moduleId: string): Promise<ModernizationAssessment>;
-      extractRules(moduleId: string): Promise<BusinessRuleReport>;
-      createModernizationPlan(moduleId: string): Promise<ModernizationPlan>;
-    }
+Honest framing is a hard rule in this repo. Every claim maps to a visible artifact.
 
-For the hackathon MVP, the adapter is backed by deterministic local fixtures.
+- **Real:** the agent grounding loop, citation verification against actual source lines, the evidence catalog, the type-enforced validation boundary, the interactive SME workflow, the traceability graph.
+- **Synthetic and clearly labeled:** the `CLAIMS-BATCH` module and its source are a representative synthetic COBOL artifact, not customer code.
+- **Not claimed:** production-grade COBOL parsing, live enterprise-system integration, or automatic ticket creation. Work packages are **drafts** for human review — nothing is filed in Jira.
 
-## Repository Layout
+Outputs are **case-file-ready** — grounded, traceable, and reviewable. They are an input to SME validation, not a substitute for it.
 
-    docs/          Product, architecture, demo, and submission notes
-    slack/         Slack app manifest and configuration
-    src/app/       Slack app entry points, Slack rendering, and interactive action handlers
-    src/domain/    Modernization assessment types and orchestration logic
-    src/demo/      Synthetic legacy modernization fixtures
-    src/tools/     Reserved for future external tool adapters
-    tests/         Unit and behavior tests
+## Architecture
 
-## Development
+```mermaid
+flowchart TB
+  subgraph slack["Slack surface — src/app/"]
+    cmd["/legacy assess claims-batch<br/>· auto · --agent · --fixture"]
+    card["Assessment card + action buttons<br/>Mark reviewed · SME follow-up · Draft ticket · Show trace"]
+    home["App Home dashboard<br/>+ traceability graph PNG → demo channel"]
+  end
 
-Install dependencies:
+  subgraph domain["Orchestration — src/domain/"]
+    orch["orchestrator.ts"]
+    factory["client-factory.ts<br/>auto = agent if ANTHROPIC_API_KEY, else fixture"]
+    fixture["fixture client<br/>deterministic prebuilt assessment"]
+  end
+
+  subgraph proposes["MODEL PROPOSES (untrusted)"]
+    agent["mcp-legacy-analysis-client.ts<br/>claude-sonnet-4-6 grounding loop"]
+    cbl[("src/demo/source/claims-batch.cbl<br/>synthetic COBOL source")]
+  end
+
+  subgraph validates["APP VALIDATES (deterministic, pure)"]
+    ground["grounding.ts · verifyAndStamp<br/>resolve citations → mint EV-### → stamp status"]
+    catalog[["EvidenceCatalog<br/>every claim ↔ EV-### ↔ real line"]]
+    decision["validation-decision.ts<br/>SME workflow — only path to sme_validated"]
+  end
+
+  cmd --> orch --> factory
+  factory -->|agent mode| agent
+  factory -->|fixture mode| fixture
+  agent -->|proposed citations| ground
+  cbl --- agent
+  ground --> catalog
+  ground -->|machine_inferred / sme_required| card
+  fixture --> card
+  card -->|SME decision| decision
+  decision -->|sme_validated / rejected| home
+  catalog -.->|trace refs| home
+
+  style proposes fill:#fff4e5,stroke:#b26a00,color:#5c3d00
+  style validates fill:#e8f0fe,stroke:#1a73e8,color:#0b3d91
+  style cbl fill:#fef7e0,stroke:#b26a00
+  style decision fill:#d2e3fc,stroke:#1a73e8
+```
+
+The `LegacyAnalysisClient` boundary lets a production version swap the agent for a real code-analysis backend, dependency mapper, or ticketing system without touching the Slack workflow layer.
+
+## Setup
+
+Install:
 
     npm install
 
-Run the deterministic local demo:
-
-    npm run demo
-
-Run tests:
-
-    npm test
-
-Run the Slack Socket Mode app locally:
-
-    npm run slack:dev
-
-Required local environment variables:
+Required environment variables (`.env`, never committed):
 
     SLACK_BOT_TOKEN=xoxb-...
     SLACK_SIGNING_SECRET=...
@@ -112,43 +131,36 @@ Required local environment variables:
     PORT=3000
     NODE_ENV=development
 
-Do not commit local .env files.
+Optional — enables agent mode:
 
-## Local Slack MVP Test
+    ANTHROPIC_API_KEY=sk-ant-...
 
-The Slack Socket Mode MVP has been tested locally with the slash command:
+## Run
 
-    /legacy assess claims-batch
+Deterministic local demo (no Slack, no key):
 
-The command returns a Slack-native modernization assessment for CLAIMS-BATCH, including risk, business rules, critical dependencies, SME questions, recommended migration path, Jira-ready work packages, and an audit summary. The action buttons (Mark reviewed, SME follow-up, Draft ticket, Show trace) update the card in place.
+    npm run demo
 
-## Demo Story
+Slack app (Socket Mode):
 
-A transformation lead, architect, or delivery manager types:
+    npm run slack:dev
 
-    /legacy assess claims-batch
+Slash command setup, scopes, and Socket Mode configuration: see `docs/SLACK_SETUP.md`.
 
-The agent responds with a concise command-center view:
+## Test
 
-1. What this legacy module does
-2. Why modernization is risky
-3. Which business rules were detected
-4. Which dependencies must be protected
-5. Which SME questions block safe migration
-6. What the recommended migration path is
-7. Which Jira-ready work packages should be created
+    npm test
 
-The reviewer then works the card without leaving Slack — marking it reviewed, routing SME questions, drafting tickets, and expanding the audit trace — and watches the card's state change in place.
+CI runs `tsc --noEmit` before the test suite. Type-stripping at runtime can let tests pass while TypeScript is broken, so the type check is a required gate, not an afterthought.
 
-## Non-Goals for the MVP
+## Repository layout
 
-The MVP does not claim to perform full production-grade COBOL, Assembler, or Smalltalk analysis.
-
-It does not connect to live enterprise systems.
-
-It does not create Jira tickets yet, and interactive state is not yet persisted to an external store.
-
-Those are future integrations. The current focus is the agentic workflow, Slack-native interaction model, modernization assessment shape, interactive review loop, and clean adapter boundary.
+    docs/          Product, architecture, demo, and submission notes
+    slack/         Slack app manifest
+    src/app/       Slack entry points, rendering, App Home, action handlers
+    src/domain/    Assessment types, orchestration, agent + fixture clients
+    src/demo/      Synthetic source and deterministic fixtures
+    tests/         Unit, behavior, and adversarial boundary tests
 
 ## License
 

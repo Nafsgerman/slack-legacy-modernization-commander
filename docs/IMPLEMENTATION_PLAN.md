@@ -1,54 +1,54 @@
 # Implementation Plan
 
-## Current Status
+Status reflects shipped state at tag `v0.6.1-demo-ready` (49/49 green, tsc clean).
 
-The MVP is implemented and running as a Slack Socket Mode app.
+## Milestone 1: Project Spine
 
-The command is:
+- [x] Project context, product brief, architecture.
+- [x] TypeScript scaffold, ESM, Node 22.
+- [x] Modernization assessment types (`src/domain/types.ts`).
+- [x] Synthetic COBOL source artifact (`src/demo/source/claims-batch.cbl`).
+- [x] Deterministic fixture assessment.
 
-    /legacy assess claims-batch
+## Milestone 2: Domain Workflow
 
-The workflow now uses a real MCP server integration for its modernization tool layer.
+- [x] `LegacyAnalysisClient` adapter boundary.
+- [x] Orchestrator over the client boundary.
+- [x] Fixture client (deterministic).
+- [x] Plain-text + Slack Block Kit rendering.
+- [x] Unit + behavior tests.
 
-## Completed
+## Milestone 3: Agent Grounding
 
-- [x] Create Slack app scaffold
-- [x] Implement `/legacy assess claims-batch`
-- [x] Build modernization domain model
-- [x] Add deterministic CLAIMS-BATCH demo fixture
-- [x] Render concise Slack Block Kit assessment
-- [x] Add plain-text demo output
-- [x] Add tests
-- [x] Add GitHub Actions CI
-- [x] Rename and clean incident-era docs
-- [x] Add MCP server integration
-- [x] Add MCP-backed legacy analysis client
-- [x] Replace placeholder trace with real MCP tool trace
-- [x] Test MCP client path in CI
+- [x] Agent client against `claude-sonnet-4-6`.
+- [x] Model proposes paragraph/line citations into real COBOL source.
+- [x] `verifyAndStamp` resolves citations → mints `EV-###` evidence catalog.
+- [x] `validationStatus` stamped per claim (`machine_inferred` / `sme_required`).
+- [x] Derived `smeValidationChecklist` from model `unknowns` (app-owned).
+- [x] Adversarial tests: model can never reach `sme_validated`.
 
-## MCP Tools Implemented
+## Milestone 4: Mode Selection
 
-    legacy.assess_module
-    legacy.extract_rules
-    legacy.create_plan
+- [x] `--agent` / `--fixture` flags.
+- [x] Auto mode: agent if `ANTHROPIC_API_KEY` set, else fixture.
+- [x] Client factory + command-arg parsing, with tests.
 
-## Next Engineering Milestones
+## Milestone 5: Interactive Slack Loop
 
-1. Add architecture diagram.
-2. Add README screenshot.
-3. Improve Slack UX with a more compact executive summary.
-4. Add optional `/legacy rules claims-batch`.
-5. Add optional `/legacy tickets claims-batch` future integration after approvals and ticketing credentials exist.
-6. Add optional LLM reasoning over MCP tool results behind the existing adapter boundary.
-7. Add Devpost submission materials.
+- [x] Slack app manifest, Socket Mode, `/legacy` slash command.
+- [x] Assessment card with action buttons (Mark reviewed · SME follow-up · Draft ticket · Show trace).
+- [x] `validation-decision` workflow — only path to `sme_validated`.
+- [x] App Home live dashboard reflecting validated state.
+- [x] Traceability graph PNG posted to demo channel on each SME decision.
 
-## Quality Bar
+## Milestone 6: Submission Polish
 
-This repo should remain portfolio-grade:
-
-- Real implemented boundaries, not fake claims
-- Deterministic and reliable demo
-- Tests for critical behavior
-- CI green
-- Honest non-goals
-- Clean documentation
+- [x] CI: `tsc --noEmit` gate before tests.
+- [x] README rewrite (three modes, boundary, grounding, honest framing).
+- [x] Mermaid architecture diagram.
+- [x] PROJECT_CONTEXT rewrite to modernization product.
+- [ ] DEMO_SCRIPT rewrite.
+- [ ] Bot display name fix in installed Slack app (reinstall after rename).
+- [ ] 3-minute demo video.
+- [ ] Devpost text.
+- [ ] Sandbox access + reviewer grants checklist.
