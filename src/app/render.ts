@@ -131,7 +131,7 @@ export const renderModernizationAssessmentText = (
     .join("\n");
 
   const path = assessment.recommendedMigrationPath
-    .map((step, index) => `${index + 1}. ${step}`)
+    .map((step, index) => `${index + 1}. ${step.replace(/^\s*\d+[.)]\s*/, "")}`)
     .join("\n");
 
   const workPackages = assessment.ticketDraftWorkPackages
@@ -444,7 +444,7 @@ export const renderModernizationAssessmentBlocks = (
     ),
     mrkdwnSection(
       `*Recommended path*\n${nextMoves
-        .map((step, index) => `${index + 1}. ${step}`)
+        .map((step, index) => `${index + 1}. ${step.replace(/^\s*\d+[.)]\s*/, "")}`)
         .join("\n")}`
     ),
     mrkdwnSection(
