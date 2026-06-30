@@ -13,6 +13,7 @@ import {
 import { runLegacyAssessmentWorkflow } from "../domain/orchestrator.ts";
 import { publishAppHome } from "./home.ts";
 import type { DemoWorkflowRenderState } from "./render.ts";
+import { applyValidationDecision } from "../domain/validation-decision.ts";
 
 const requiredEnv = (name: string): string => {
   const value = process.env[name];
@@ -63,9 +64,16 @@ export const createSlackApp = (): App => {
 
   app.event("app_home_opened", async ({ event, client, logger }) => {
     try {
-      const assessment = await runLegacyAssessmentWorkflow("claims-batch");
+      const baseAssessment = await runLegacyAssessmentWorkflow("claims-batch");
       const key = `${event.user}:claims-batch`;
-      await publishAppHome(client, event.user, assessment, demoState.get(key));
+      const state = demoState.get(key);
+      const assessment =
+        state?.demoWorkflowStatus === "sme_reviewed"
+          ? applyValidationDecision(baseAssessment, "sme_validated")
+          : state?.demoWorkflowStatus === "sme_followup_required"
+          ? applyValidationDecision(baseAssessment, "sme_required")
+          : baseAssessment;
+      await publishAppHome(client, event.user, assessment, state);
     } catch (err) {
       logger.error("app_home_opened: failed to publish Home", err);
     }
@@ -75,7 +83,8 @@ export const createSlackApp = (): App => {
     await ack();
     try {
       const userId = body.user.id;
-      const assessment = await runLegacyAssessmentWorkflow("claims-batch");
+      const baseAssessment = await runLegacyAssessmentWorkflow("claims-batch");
+      const assessment = applyValidationDecision(baseAssessment, "sme_validated");
       const key = `${userId}:claims-batch`;
       const state: DemoWorkflowRenderState = { demoWorkflowStatus: "sme_reviewed" };
       demoState.set(key, state);
@@ -94,7 +103,8 @@ export const createSlackApp = (): App => {
     await ack();
     try {
       const userId = body.user.id;
-      const assessment = await runLegacyAssessmentWorkflow("claims-batch");
+      const baseAssessment = await runLegacyAssessmentWorkflow("claims-batch");
+      const assessment = applyValidationDecision(baseAssessment, "sme_required");
       const key = `${userId}:claims-batch`;
       const state: DemoWorkflowRenderState = { demoWorkflowStatus: "sme_followup_required" };
       demoState.set(key, state);
