@@ -234,15 +234,36 @@ const actionButton = (
   value
 });
 
-const renderAssessmentActions = (assessment: ModernizationAssessment): KnownBlock => ({
-  type: "actions",
-  elements: [
-    actionButton("Mark reviewed", legacyAssessmentActionIds.markSmeReviewed, assessment.moduleId),
-    actionButton("SME follow-up", legacyAssessmentActionIds.needsSmeFollowUp, assessment.moduleId),
-    actionButton("Draft ticket", legacyAssessmentActionIds.prepareTicketDraft, assessment.moduleId),
-    actionButton("Show trace", legacyAssessmentActionIds.showMcpTrace, assessment.moduleId)
-  ]
+const SLACK_APP_ID = process.env["SLACK_APP_ID"] ?? "";
+const SLACK_TEAM_ID = process.env["SLACK_TEAM_ID"] ?? "";
+
+const appHomeDeepLink = (): string | null =>
+  SLACK_APP_ID && SLACK_TEAM_ID
+    ? `slack://app?team=${SLACK_TEAM_ID}&id=${SLACK_APP_ID}&tab=home`
+    : null;
+
+const linkButton = (text: string, url: string) => ({
+  type: "button" as const,
+  text: {
+    type: "plain_text" as const,
+    text
+  },
+  url
 });
+
+const renderAssessmentActions = (assessment: ModernizationAssessment): KnownBlock => {
+  const homeLink = appHomeDeepLink();
+  return {
+    type: "actions",
+    elements: [
+      actionButton("Mark reviewed", legacyAssessmentActionIds.markSmeReviewed, assessment.moduleId),
+      actionButton("SME follow-up", legacyAssessmentActionIds.needsSmeFollowUp, assessment.moduleId),
+      actionButton("Draft ticket", legacyAssessmentActionIds.prepareTicketDraft, assessment.moduleId),
+      actionButton("Show trace", legacyAssessmentActionIds.showMcpTrace, assessment.moduleId),
+      ...(homeLink ? [linkButton("View live dashboard", homeLink)] : [])
+    ]
+  };
+};
 
 export const renderTicketDraftResponse = (assessment: ModernizationAssessment): string => {
   const [workPackage] = assessment.ticketDraftWorkPackages;

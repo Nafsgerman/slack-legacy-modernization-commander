@@ -113,7 +113,7 @@ export const postTraceabilityGraph = async (
   }
   const caption = `*Evidence traceability graph* · ${assessment.moduleName} · ${validationSummary(
     assessment
-  )} · color = validation status`;
+  )} · color = validation status\nOpen the *Legacy Commander* app → Home tab for the live dashboard.`;
   try {
     await uploadTraceabilityGraph(client, assessment, DEMO_CHANNEL_ID, caption);
   } catch (err) {
