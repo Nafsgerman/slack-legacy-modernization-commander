@@ -14,6 +14,8 @@ import type { DemoWorkflowRenderState } from "./render.ts";
 import { runLegacyAssessmentWorkflow } from "../domain/orchestrator.ts";
 import { applyValidationDecision } from "../domain/validation-decision.ts";
 import { publishAppHome, postTraceabilityGraph } from "./home.ts";
+import { resolveAnalysisClient, AgentModeUnavailableError } from "../domain/client-factory.ts";
+import { parseAssessArgs, InvalidAssessCommandError } from "./command-args.ts";
 
 const requiredEnv = (name: string): string => {
   const value = process.env[name];
@@ -26,12 +28,18 @@ const helpText = [
   "",
   "Run the demo modernization assessment:",
   "`/legacy assess claims-batch`",
+  "`/legacy assess claims-batch --agent`  (force live Claude agent)",
+  "`/legacy assess claims-batch --fixture`  (force deterministic fixture)",
   "",
   "Returns a COBOL claims-batch assessment with business rules, dependencies, SME questions, migration path, work packages, and tool-call audit summary."
 ].join("\n");
 
-const normalizeCommandText = (text: string | undefined): string =>
-  text?.trim().toLowerCase().replace(/\s+/g, " ") ?? "";
+const agentUnavailableText = [
+  "*Agent mode unavailable*",
+  "",
+  "`--agent` was requested but `ANTHROPIC_API_KEY` is not set in this environment.",
+  "Run `/legacy assess claims-batch` (auto mode) or `--fixture` instead."
+].join("\n");
 
 export const createSlackApp = (): App => {
   const app = new App({
@@ -44,24 +52,45 @@ export const createSlackApp = (): App => {
   const demoState = new Map<string, DemoWorkflowRenderState>();
 
   app.command("/legacy", async ({ command, ack, client, logger }) => {
-    const normalizedText = normalizeCommandText(command.text);
-    if (normalizedText === "assess claims-batch" || normalizedText === "demo") {
-      const assessment = await runLegacyAssessmentWorkflow("claims-batch");
-      await ack({
-        response_type: "ephemeral",
-        text: renderModernizationAssessmentText(assessment),
-        blocks: renderModernizationAssessmentBlocks(assessment)
-      });
-      // Post the initial (machine-inferred) traceability graph to the channel.
-      await postTraceabilityGraph(client, assessment);
-      return;
+    let parsed;
+    try {
+      parsed = parseAssessArgs(command.text);
+    } catch (err) {
+      if (err instanceof InvalidAssessCommandError) {
+        logger.info(`Unhandled /legacy command text: "${command.text}"`);
+        await ack({
+          response_type: "ephemeral",
+          text: helpText,
+          blocks: [{ type: "section", text: { type: "mrkdwn", text: helpText } }]
+        });
+        return;
+      }
+      throw err;
     }
-    logger.info(`Unhandled /legacy command text: "${command.text}"`);
+
+    let resolved;
+    try {
+      resolved = resolveAnalysisClient(parsed.mode);
+    } catch (err) {
+      if (err instanceof AgentModeUnavailableError) {
+        await ack({
+          response_type: "ephemeral",
+          text: agentUnavailableText,
+          blocks: [{ type: "section", text: { type: "mrkdwn", text: agentUnavailableText } }]
+        });
+        return;
+      }
+      throw err;
+    }
+
+    const assessment = await runLegacyAssessmentWorkflow(parsed.moduleId, resolved.client);
     await ack({
       response_type: "ephemeral",
-      text: helpText,
-      blocks: [{ type: "section", text: { type: "mrkdwn", text: helpText } }]
+      text: renderModernizationAssessmentText(assessment, resolved),
+      blocks: renderModernizationAssessmentBlocks(assessment, undefined, resolved)
     });
+    // Post the initial (machine-inferred) traceability graph to the channel.
+    await postTraceabilityGraph(client, assessment);
   });
 
   app.event("app_home_opened", async ({ event, client, logger }) => {

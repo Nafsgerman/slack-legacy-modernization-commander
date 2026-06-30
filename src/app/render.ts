@@ -1,5 +1,6 @@
 import type { KnownBlock } from "@slack/types";
 import type { ModernizationAssessment, ValidationStatus } from "../domain/types.ts";
+import type { ResolvedAnalysisClient } from "../domain/client-factory.ts";
 
 export type DemoWorkflowRenderState = {
   demoWorkflowStatus?: "initial" | "sme_reviewed" | "sme_followup_required";
@@ -96,7 +97,15 @@ const summarizeTraceAction = (tool: string): string => {
   return "ran modernization tool";
 };
 
-export const renderModernizationAssessmentText = (assessment: ModernizationAssessment): string => {
+export const renderModernizationAssessmentText = (
+  assessment: ModernizationAssessment,
+  resolved?: ResolvedAnalysisClient
+): string => {
+  const modeLine = resolved
+    ? resolved.mode === "agent"
+      ? `Source: AGENT (live) · ${resolved.model}`
+      : "Source: FIXTURE (deterministic) · no API call"
+    : "Source: FIXTURE (deterministic) · no API call";
   const rules = assessment.extractedBusinessRules
     .map(
       (rule) =>
@@ -171,6 +180,7 @@ export const renderModernizationAssessmentText = (assessment: ModernizationAsses
     `Platform: ${assessment.platform}`,
     `Assessment: ${assessment.assessmentId}`,
     `Generated UTC: ${assessment.generatedAtUtc}`,
+    modeLine,
     `Overall confidence: ${assessment.confidence}`,
     `Validation status: ${formatValidationStatus(assessment.validationStatus)}`,
     "",
@@ -337,7 +347,8 @@ export const renderMcpTraceResponseBlocks = (assessment: ModernizationAssessment
 
 export const renderModernizationAssessmentBlocks = (
   assessment: ModernizationAssessment,
-  state?: DemoWorkflowRenderState
+  state?: DemoWorkflowRenderState,
+  resolved?: ResolvedAnalysisClient
 ): KnownBlock[] => {
   const topRules = assessment.extractedBusinessRules.slice(0, 3);
   const topDependencies = assessment.dependencies.slice(0, 3);
@@ -345,6 +356,8 @@ export const renderModernizationAssessmentBlocks = (
   const nextMoves = assessment.recommendedMigrationPath.slice(0, 3);
   const topEvidence = assessment.evidenceCatalog.evidence.slice(0, 5);
   const workflow = workflowLabels(assessment.validationStatus, state);
+  const modeBadge =
+    resolved?.mode === "agent" ? `🤖 AGENT · ${resolved.model}` : "📋 FIXTURE · deterministic, no API call";
 
   return [
     {
@@ -359,9 +372,7 @@ export const renderModernizationAssessmentBlocks = (
       elements: [
         {
           type: "mrkdwn",
-          text:
-            `Assessment ${assessment.assessmentId} · Generated UTC ${assessment.generatedAtUtc} · ` +
-            `Deterministic demo fixture`
+          text: `Assessment ${assessment.assessmentId} · Generated UTC ${assessment.generatedAtUtc} · ${modeBadge}`
         }
       ]
     },
