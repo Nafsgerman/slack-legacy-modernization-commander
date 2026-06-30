@@ -14,10 +14,7 @@ oauth_config:
     bot:
       - commands
       - chat:write
-settings:
-  socket_mode_enabled: true
-  interactivity:
-    is_enabled: true
+      - files:write
 settings:
   socket_mode_enabled: true
   interactivity:
