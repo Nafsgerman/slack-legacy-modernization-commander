@@ -25,10 +25,17 @@ export const uploadTraceabilityGraph = async (
     initial_comment: ""
   });
 
-  const raw = result as unknown as { files?: Array<{ id?: string; permalink?: string }> };
-  const file = raw.files?.[0];
-  const fileId = file?.id ?? "";
-  const permalink = file?.permalink ?? "";
+  // files.uploadV2 response shape: { files: [ { files: [ { id, permalink, ... } ] } ] }
+  // outer "files" = one entry per upload batch; inner "files" = the actual file objects.
+  const raw = result as unknown as Record<string, unknown>;
+  const outer = Array.isArray(raw["files"]) ? (raw["files"] as Record<string, unknown>[]) : [];
+  const inner = outer[0] && Array.isArray(outer[0]["files"])
+    ? (outer[0]["files"] as Record<string, unknown>[])
+    : [];
+  const file = inner[0];
+
+  const fileId = typeof file?.["id"] === "string" ? (file["id"] as string) : "";
+  const permalink = typeof file?.["permalink"] === "string" ? (file["permalink"] as string) : "";
 
   if (!fileId) {
     throw new Error("files.uploadV2 did not return a file id");
